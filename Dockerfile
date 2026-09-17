@@ -11,7 +11,7 @@ RUN apt-get update \
        fs-uae \
        jq \
        lhasa \
-       p7zip-full \
+       7zip \
        python3 \
        unzip \
        xauth \
