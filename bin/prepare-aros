@@ -10,13 +10,51 @@ mkdir -p "$DEST"
 archive="$DEST/$AROS_ARCHIVE"
 md5file="$archive.md5"
 
-curl -fsSL --retry 3 "$AROS_URL" -o "$archive.tmp"
-curl -fsSL --retry 3 "$AROS_MD5_URL" -o "$md5file"
-mv "$archive.tmp" "$archive"
+# SourceForge's mirror/download routing changes over time. Keep the pinned
+# build identity in pinned.env, but try canonical routes instead of depending
+# on one hard-coded mirror hostname/path.
+download() {
+    output=$1
+    shift
+    for url in "$@"; do
+        echo "Trying $url" >&2
+        if curl -fL --retry 3 --retry-all-errors --connect-timeout 20 \
+            -A 'amiga-runtime/1.0 (+https://github.com/Ploos-AS/amiga-runtime)' \
+            "$url" -o "$output.tmp"; then
+            mv "$output.tmp" "$output"
+            return 0
+        fi
+        rm -f "$output.tmp"
+    done
+    return 1
+}
+
+sf_base="https://sourceforge.net/projects/aros/files/nightly2/$AROS_BUILD_DATE/Binaries"
+mirror_base="https://downloads.sourceforge.net/project/aros/nightly2/$AROS_BUILD_DATE/Binaries"
+
+download "$archive" \
+    "$AROS_URL" \
+    "$sf_base/$AROS_ARCHIVE?download=1" \
+    "$mirror_base/$AROS_ARCHIVE" || {
+        echo "Unable to download pinned AROS archive: $AROS_ARCHIVE" >&2
+        exit 64
+    }
+
+download "$md5file" \
+    "$AROS_MD5_URL" \
+    "$sf_base/$AROS_ARCHIVE.md5?download=1" \
+    "$mirror_base/$AROS_ARCHIVE.md5" || {
+        echo "Unable to download checksum for pinned AROS archive" >&2
+        exit 64
+    }
 
 expected=$(awk '{print $1}' "$md5file" | head -n1)
 actual=$(md5sum "$archive" | awk '{print $1}')
-test -n "$expected" && test "$actual" = "$expected" || {
+case "$expected" in
+    [0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]*) ;;
+    *) echo "Invalid upstream checksum response" >&2; exit 65 ;;
+esac
+test "$actual" = "$expected" || {
     echo "AROS upstream checksum mismatch" >&2
     exit 65
 }
@@ -25,7 +63,7 @@ sha256sum "$archive" | tee "$DEST/archive.sha256"
 rm -rf "$DEST/unpacked" "$DEST/iso-root"
 mkdir -p "$DEST/unpacked" "$DEST/iso-root"
 unzip -q "$archive" -d "$DEST/unpacked"
-iso=$(find "$DEST/unpacked" -type f -name '*.iso' -print -quit)
+iso=$(find "$DEST/unpacked" -type f -iname '*.iso' -print -quit)
 test -n "$iso" || { echo 'AROS ISO not found in archive' >&2; exit 66; }
 cp "$iso" "$DEST/aros.iso"
 xorriso -osirrox on -indev "$DEST/aros.iso" -extract / "$DEST/iso-root" >/dev/null 2>&1
