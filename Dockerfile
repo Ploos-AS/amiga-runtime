@@ -20,6 +20,7 @@ RUN apt-get update \
        libmpc-dev \
        libmpfr-dev \
        libncurses-dev \
+       netpbm \
        python3 \
        texinfo \
        unzip \
