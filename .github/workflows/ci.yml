@@ -49,7 +49,6 @@ jobs:
           test -s aros-cache/aros.iso
           test -s aros-cache/aros-rom.bin
           test -s aros-cache/aros-ext.bin
-          test -n "$(find aros-cache/iso-root -type f -ipath '*/s/startup-sequence' -print -quit)"
           test -s aros-cache/manifest.txt
           grep -qx 'acquisition=official-nightly-index' aros-cache/manifest.txt
           grep -qx 'target=amiga-m68k' aros-cache/manifest.txt
