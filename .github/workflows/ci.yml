@@ -27,7 +27,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: aros-cache
-          key: amiga-runtime-aros-index-${{ runner.os }}-${{ hashFiles('runtime/aros/pinned.env', 'bin/prepare-aros') }}
+          key: amiga-runtime-aros-index-v2-${{ runner.os }}-${{ hashFiles('runtime/aros/pinned.env', 'bin/prepare-aros') }}
       - name: Acquire AROS m68k runtime from official index
         if: steps.aros-cache.outputs.cache-hit != 'true'
         run: |
