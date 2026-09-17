@@ -58,10 +58,11 @@ lines = [
 ]
 if system_dir is not None:
     lines.extend([
+        # Match the directory-volume configuration already qualified in AmiGuard.
+        # FS-UAE derives the bootable volume from the directory; explicit label,
+        # read-only and priority options prevented the extracted AROS tree from
+        # reaching Startup-Sequence on the Debian runner build.
         f"hard_drive_0 = {system_dir}",
-        "hard_drive_0_label = AROS",
-        "hard_drive_0_read_only = 0",
-        "hard_drive_0_priority = 10",
     ])
 else:
     lines.extend([
@@ -72,9 +73,6 @@ if evidence is not None:
     drive = 1 if system_dir is not None else 0
     lines.extend([
         f"hard_drive_{drive} = {evidence}",
-        f"hard_drive_{drive}_label = Evidence",
-        f"hard_drive_{drive}_read_only = 0",
-        f"hard_drive_{drive}_priority = -10",
     ])
 output.parent.mkdir(parents=True, exist_ok=True)
 output.write_text("\n".join(lines) + "\n")
