@@ -8,32 +8,23 @@ mkdir -p "$DEST"
 # shellcheck disable=SC1090
 . "$PIN"
 
-# SourceForge publishes only some targets on a given nightly. Discover the
-# actual amiga-m68k boot ISO filename from the pinned build's Binaries listing
-# instead of assuming a constructed URL is present.
-sf_dir="https://sourceforge.net/projects/aros/files/nightly2/$AROS_BUILD_DATE/Binaries/"
-listing="$DEST/sourceforge-binaries.html"
+: "${AROS_BUILD_DATE:?AROS_BUILD_DATE is required}"
+: "${AROS_ARCHIVE:?AROS_ARCHIVE is required}"
 
-echo "Discovering AROS amiga-m68k boot ISO in $sf_dir" >&2
-curl -fL --retry 3 --retry-all-errors --connect-timeout 20 \
-    -A 'amiga-runtime/1.0 (+https://github.com/Ploos-AS/amiga-runtime)' \
-    "$sf_dir" -o "$listing"
-
-discovered=$(grep -Eo "AROS-${AROS_BUILD_DATE}-amiga-m68k-boot-iso\.zip" "$listing" | head -n1 || true)
-test -n "$discovered" || {
-    echo "Pinned AROS build $AROS_BUILD_DATE does not publish amiga-m68k-boot-iso" >&2
+expected_archive="AROS-${AROS_BUILD_DATE}-amiga-m68k-boot-iso.zip"
+test "$AROS_ARCHIVE" = "$expected_archive" || {
+    echo "Pinned archive is not the expected amiga-m68k boot ISO: $AROS_ARCHIVE" >&2
     exit 64
 }
 
-if [ -n "${AROS_ARCHIVE:-}" ] && [ "$AROS_ARCHIVE" != "$discovered" ]; then
-    echo "Pinned archive name differs from SourceForge listing: $AROS_ARCHIVE != $discovered" >&2
-    exit 64
-fi
-AROS_ARCHIVE=$discovered
+# Do not scrape SourceForge directory pages: old/current directory listings can
+# be inconsistent across mirrors. The pin identifies one concrete published
+# artifact and SourceForge's /download endpoint resolves the serving mirror.
+base="https://sourceforge.net/projects/aros/files/nightly2/$AROS_BUILD_DATE/Binaries"
+archive_url="$base/$AROS_ARCHIVE/download"
+md5_url="$base/$AROS_ARCHIVE.md5/download"
 archive="$DEST/$AROS_ARCHIVE"
 md5file="$archive.md5"
-archive_url="$sf_dir$AROS_ARCHIVE/download"
-md5_url="$sf_dir$AROS_ARCHIVE.md5/download"
 
 download() {
     output=$1
