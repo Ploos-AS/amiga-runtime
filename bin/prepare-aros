@@ -16,8 +16,8 @@ mkdir -p "$DEST"
 # shellcheck disable=SC1090
 . "$PIN"
 
-: "${AROS_INDEX_URL:?AROS_INDEX_URL is required}"
-: "${AROS_TARGET:?AROS_TARGET is required}"
+AROS_INDEX_URL=${AROS_INDEX_URL:-https://aros.sourceforge.io/cgi-bin/files?lang=en&type=nightly2}
+AROS_TARGET=${AROS_TARGET:-amiga-m68k-boot-iso}
 test "$AROS_TARGET" = amiga-m68k-boot-iso || {
     echo "Unsupported AROS target: $AROS_TARGET" >&2
     exit 64
