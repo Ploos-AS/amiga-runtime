@@ -21,14 +21,27 @@ jobs:
         run: docker run --rm amiga-runtime:m1 self-test
       - name: Profile inventory
         run: docker run --rm amiga-runtime:m1 profiles
+      - name: Prepare pinned AROS m68k runtime
+        run: |
+          mkdir -p "$PWD/aros-cache"
+          docker run --rm \
+            -v "$PWD/aros-cache:/opt/amiga-runtime/aros" \
+            amiga-runtime:m1 prepare-aros
+          test -s aros-cache/aros.iso
+          test -s aros-cache/aros-rom.bin
+          test -s aros-cache/aros-ext.bin
+          cat aros-cache/manifest.txt
       - name: Verify result writer
         run: |
           mkdir -p evidence
           python3 lib/write-result.py PASS 0 a1200-020 smoke evidence
           jq -e '.status == "PASS" and .runtime == "aros"' evidence/result.json
           test -s evidence/junit.xml
-      - name: Upload harness evidence
+      - name: Upload qualification evidence
         uses: actions/upload-artifact@v4
         with:
-          name: amiga-runtime-harness-evidence
-          path: evidence/
+          name: amiga-runtime-m1-evidence
+          path: |
+            evidence/
+            aros-cache/manifest.txt
+            aros-cache/archive.sha256
