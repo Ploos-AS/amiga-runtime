@@ -5,11 +5,14 @@ ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
        ca-certificates \
+       coreutils \
        curl \
        fs-uae \
        jq \
        python3 \
-       coreutils \
+       unzip \
+       xorriso \
+       xvfb \
     && rm -rf /var/lib/apt/lists/*
 
 COPY bin/amiga-runtime /usr/local/bin/amiga-runtime
