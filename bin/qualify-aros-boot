@@ -6,25 +6,24 @@ EVIDENCE=${AMIGA_RUNTIME_EVIDENCE:-/work/evidence}
 TIMEOUT=${AMIGA_RUNTIME_BOOT_TIMEOUT:-20}
 PROFILE=${1:-a1200-020}
 PROFILES=${AMIGA_RUNTIME_PROFILES:-/opt/amiga-runtime/profiles}
+GENERATOR=${AMIGA_RUNTIME_FS_UAE_GENERATOR:-/opt/amiga-runtime/lib/generate-fs-uae-config.py}
 
 mkdir -p "$EVIDENCE"
 for f in "$AROS/aros.iso" "$AROS/aros-rom.bin" "$AROS/aros-ext.bin"; do
     test -s "$f" || { echo "missing prepared AROS artifact: $f" >&2; exit 69; }
 done
-test -f "$PROFILES/$PROFILE.conf" || { echo "unknown profile: $PROFILE" >&2; exit 66; }
+profile="$PROFILES/$PROFILE.conf"
+test -f "$profile" || { echo "unknown profile: $PROFILE" >&2; exit 66; }
+test -f "$GENERATOR" || { echo "missing FS-UAE config generator: $GENERATOR" >&2; exit 69; }
 
 sha256sum "$AROS/aros.iso" "$AROS/aros-rom.bin" "$AROS/aros-ext.bin" > "$EVIDENCE/runtime.sha256"
+config="$EVIDENCE/fs-uae.conf"
+python3 "$GENERATOR" "$profile" "$AROS/aros-rom.bin" "$AROS/aros-ext.bin" "$AROS/aros.iso" "$config"
 
-# AROS supplies a redistributable Amiga m68k ROM pair.  Feed those directly to
-# FS-UAE; no Commodore/Amiga proprietary Kickstart is used.  The boot ISO is
-# attached as CD media.  This M1 gate proves that the emulator can start the
-# pinned free runtime. Guest-level payload/marker proof is the M2/Q3 gate.
+# M1 currently proves only emulator/process startup. It deliberately does not
+# call this a guest boot PASS; deterministic guest markers are the next gate.
 set +e
-timeout "$TIMEOUT" fs-uae "$PROFILES/$PROFILE.conf" \
-    --kickstart-file="$AROS/aros-rom.bin" \
-    --kickstart-ext-file="$AROS/aros-ext.bin" \
-    --cdrom-drive-0="$AROS/aros.iso" \
-    --console-debugger=0 \
+timeout "$TIMEOUT" fs-uae "$config" \
     >"$EVIDENCE/fs-uae.stdout.log" 2>"$EVIDENCE/fs-uae.stderr.log"
 rc=$?
 set -e
@@ -48,10 +47,10 @@ data = {
     "emulator_started": started == "true",
     "guest_boot_proven": False,
     "status": "PASS" if started == "true" else "FAIL",
-    "boundary": "M1 process/emulator start gate; guest boot markers require M2/Q3"
+    "boundary": "M1 emulator start gate only; guest marker proof is required before runtime qualification"
 }
 pathlib.Path(out).write_text(json.dumps(data, indent=2) + "\n")
 PY
 
 [ "$emulator_started" = true ]
-echo 'AROS FS-UAE emulator start gate: PASS (guest marker gate pending M2/Q3)'
+echo 'AROS FS-UAE emulator start gate: PASS (guest boot remains unproven)'
