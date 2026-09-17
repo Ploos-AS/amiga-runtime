@@ -48,8 +48,12 @@ lines = [
     f"zorro_iii_memory = {z3_kib}",
     f"jit_compiler = {values.get('jit_compiler', '0')}",
     f"warp_mode = {values.get('warp_mode', '0')}",
-    f"kickstart_file = {rom}",
-    f"kickstart_ext_file = {ext}",
+    # FS-UAE internal Kickstart is the proven CI bootstrap used by AmiGuard.
+    # The AROS m68k ROM pair is still acquired and hashed as runtime evidence,
+    # but using it directly here makes FS-UAE 3.1.x exit during early startup.
+    # Boot the extracted AROS/m68k system volume with the redistributable
+    # internal replacement Kickstart instead.
+    "kickstart_file = internal",
     "console_debugger = 0",
 ]
 if system_dir is not None:
