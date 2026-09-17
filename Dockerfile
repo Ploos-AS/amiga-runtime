@@ -9,6 +9,7 @@ RUN apt-get update \
        curl \
        fs-uae \
        jq \
+       libarchive-tools \
        python3 \
        unzip \
        xauth \
