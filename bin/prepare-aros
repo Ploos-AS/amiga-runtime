@@ -17,24 +17,34 @@ expected_floppy="AROS-${AROS_BUILD_DATE}-amiga-m68k-boot-floppy.lha"
 test "$AROS_ARCHIVE" = "$expected_archive" || { echo "Pinned archive is not the expected amiga-m68k boot ISO: $AROS_ARCHIVE" >&2; exit 64; }
 test "$AROS_FLOPPY_ARCHIVE" = "$expected_floppy" || { echo "Pinned archive is not the expected amiga-m68k boot floppy: $AROS_FLOPPY_ARCHIVE" >&2; exit 64; }
 
-base="https://sourceforge.net/projects/aros/files/nightly2/$AROS_BUILD_DATE/Binaries"
-archive_url="$base/$AROS_ARCHIVE/download"
-md5_url="$base/$AROS_ARCHIVE.md5/download"
-floppy_url="$base/$AROS_FLOPPY_ARCHIVE/download"
-floppy_md5_url="$base/$AROS_FLOPPY_ARCHIVE.md5/download"
+base_path="nightly2/$AROS_BUILD_DATE/Binaries"
 archive="$DEST/$AROS_ARCHIVE"
 md5file="$archive.md5"
 floppy_archive="$DEST/$AROS_FLOPPY_ARCHIVE"
 floppy_md5file="$floppy_archive.md5"
 
-download() {
+# SourceForge's /download endpoint occasionally returns a transient 404 while
+# the file is still present on a mirror. Try the canonical endpoint first and
+# then the stable downloads host. Integrity is enforced independently below.
+download_sourceforge() {
     output=$1
-    url=$2
-    echo "Downloading $url" >&2
-    curl -fL --retry 3 --retry-all-errors --connect-timeout 20 \
-        -A 'amiga-runtime/1.0 (+https://github.com/Ploos-AS/amiga-runtime)' \
-        "$url" -o "$output.tmp"
-    mv "$output.tmp" "$output"
+    relative=$2
+    canonical="https://sourceforge.net/projects/aros/files/$relative/download"
+    direct="https://downloads.sourceforge.net/project/aros/$relative"
+    rm -f "$output.tmp"
+    for url in "$canonical" "$direct"; do
+        echo "Downloading $url" >&2
+        if curl -fL --retry 3 --retry-all-errors --connect-timeout 20 \
+            -A 'amiga-runtime/1.0 (+https://github.com/Ploos-AS/amiga-runtime)' \
+            "$url" -o "$output.tmp"; then
+            mv "$output.tmp" "$output"
+            printf '%s\n' "$url"
+            return 0
+        fi
+        rm -f "$output.tmp"
+    done
+    echo "Unable to download pinned AROS artifact: $relative" >&2
+    return 1
 }
 
 verify_md5() {
@@ -50,10 +60,10 @@ verify_md5() {
     printf '%s' "$actual"
 }
 
-download "$archive" "$archive_url"
-download "$md5file" "$md5_url"
-download "$floppy_archive" "$floppy_url"
-download "$floppy_md5file" "$floppy_md5_url"
+archive_url=$(download_sourceforge "$archive" "$base_path/$AROS_ARCHIVE")
+md5_url=$(download_sourceforge "$md5file" "$base_path/$AROS_ARCHIVE.md5")
+floppy_url=$(download_sourceforge "$floppy_archive" "$base_path/$AROS_FLOPPY_ARCHIVE")
+floppy_md5_url=$(download_sourceforge "$floppy_md5file" "$base_path/$AROS_FLOPPY_ARCHIVE.md5")
 
 actual=$(verify_md5 "$archive" "$md5file")
 floppy_md5=$(verify_md5 "$floppy_archive" "$floppy_md5file")
@@ -93,10 +103,12 @@ cp "$adf" "$DEST/aros-boot.adf"
   echo "build_date=$AROS_BUILD_DATE"
   echo "archive=$AROS_ARCHIVE"
   echo "source_url=$archive_url"
+  echo "checksum_url=$md5_url"
   echo "md5=$actual"
   echo "sha256=$actual_sha256"
   echo "floppy_archive=$AROS_FLOPPY_ARCHIVE"
   echo "floppy_source_url=$floppy_url"
+  echo "floppy_checksum_url=$floppy_md5_url"
   echo "floppy_md5=$floppy_md5"
   echo "floppy_sha256=$floppy_sha256"
   echo "boot_adf_sha256=$(sha256sum "$DEST/aros-boot.adf" | awk '{print $1}')"
