@@ -3,11 +3,11 @@
 import pathlib
 import sys
 
-if len(sys.argv) not in (6, 7):
-    raise SystemExit("usage: generate-fs-uae-config.py PROFILE ROM EXT ISO OUTPUT [EVIDENCE_DIR]")
+if len(sys.argv) not in (7, 8):
+    raise SystemExit("usage: generate-fs-uae-config.py PROFILE ROM EXT ISO FLOPPY OUTPUT [EVIDENCE_DIR]")
 
-profile_path, rom, ext, iso, output = map(pathlib.Path, sys.argv[1:6])
-evidence = pathlib.Path(sys.argv[6]) if len(sys.argv) == 7 else None
+profile_path, rom, ext, iso, floppy, output = map(pathlib.Path, sys.argv[1:7])
+evidence = pathlib.Path(sys.argv[7]) if len(sys.argv) == 8 else None
 values = {}
 for raw in profile_path.read_text().splitlines():
     line = raw.strip()
@@ -18,12 +18,7 @@ for raw in profile_path.read_text().splitlines():
         raise SystemExit(f"invalid profile line: {raw}")
     values[key.strip()] = value.strip()
 
-machines = {
-    "a500": "A500",
-    "a500plus": "A500+",
-    "a1200": "A1200",
-    "a4000": "A4000",
-}
+machines = {"a500": "A500", "a500plus": "A500+", "a1200": "A1200", "a4000": "A4000"}
 cpus = {"68000": "68000", "68020": "68020", "68030": "68030", "68040": "68040"}
 try:
     model = machines[values["machine"]]
@@ -33,9 +28,6 @@ except KeyError as exc:
 
 chip_kib = int(values.get("chip_memory_kib", "2048"))
 fast_kib = int(values.get("fast_memory_kib", "0"))
-# FS-UAE's high-level chip_memory and fast_memory options are specified in
-# KiB, matching amiga-runtime's declarative profile units. Keep them in KiB;
-# converting them to MiB makes values such as 2 invalid chip RAM sizes.
 if chip_kib % 512:
     raise SystemExit("FS-UAE chip memory must be a multiple of 512 KiB")
 if fast_kib % 1024:
@@ -49,6 +41,7 @@ lines = [
     f"fast_memory = {fast_kib}",
     f"kickstart_file = {rom}",
     f"kickstart_ext_file = {ext}",
+    f"floppy_drive_0 = {floppy}",
     f"cdrom_drive_0 = {iso}",
     "console_debugger = 0",
 ]
