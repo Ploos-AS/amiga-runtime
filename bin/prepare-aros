@@ -31,9 +31,31 @@ for command in Copy Date Dir Eval Filenote IconX Install Join List Protect Relab
     sed -i "/^[[:space:]]*C\/$command \\\\$/d" "$boot_mmake"
 done
 
-mkdir -p "$WORK/build"
-cd "$WORK/build"
-"$WORK/src/configure" --target=amiga-m68k --with-serial-debug=yes
+# Build the cross toolchain as a distinct stage. Upstream's staged builders do
+# this deliberately: configuring a complete amiga-m68k build without a separate
+# toolchain prefix can make generated crosstool directories collide with the
+# symlinks (m68k-aros-ar, ranlib, strip, ...) that CMake creates later.
+TOOLCHAIN="$WORK/toolchain"
+BUILD="$WORK/build"
+mkdir -p "$TOOLCHAIN" "$BUILD"
+cd "$BUILD"
+"$WORK/src/configure" \
+    --target=amiga-m68k \
+    --with-serial-debug=yes \
+    --with-aros-toolchain-install="$TOOLCHAIN"
+make -j"$JOBS" crosstools
+
+# Reconfigure from a clean build tree and consume the toolchain produced above.
+# This mirrors the supported upstream staged-build flow and avoids stale build
+# objects or directory/symlink type collisions from the bootstrap stage.
+rm -rf "$BUILD"
+mkdir -p "$BUILD"
+cd "$BUILD"
+"$WORK/src/configure" \
+    --target=amiga-m68k \
+    --with-serial-debug=yes \
+    --with-aros-toolchain-install="$TOOLCHAIN" \
+    --with-aros-toolchain=yes
 make -j"$JOBS"
 make -j"$JOBS" distfiles
 
@@ -63,7 +85,9 @@ printf '%s  %s\n' "$iso_sha256" aros.iso > "$DEST/archive.sha256"
     echo "source_commit=$AROS_SOURCE_COMMIT"
     echo "source_target=$AROS_SOURCE_TARGET"
     echo 'source_adjustment=trim-unused-emergency-boot-commands'
-    echo 'configure=--target=amiga-m68k --with-serial-debug=yes'
+    echo 'build_mode=staged-toolchain'
+    echo "toolchain_prefix=$TOOLCHAIN"
+    echo 'configure=--target=amiga-m68k --with-serial-debug=yes --with-aros-toolchain-install=<prefix> --with-aros-toolchain=yes'
     echo "iso_sha256=$iso_sha256"
     echo "rom_sha256=$rom_sha256"
     echo "ext_sha256=$ext_sha256"
