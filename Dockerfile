@@ -23,6 +23,7 @@ RUN apt-get update \
        netpbm \
        python3 \
        python3-mako \
+       python3-yaml \
        texinfo \
        unzip \
        xauth \
