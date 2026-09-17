@@ -3,124 +3,60 @@ set -eu
 
 DEST=${AROS_RUNTIME_DIR:-/opt/amiga-runtime/aros}
 PIN=${AROS_PIN_FILE:-/opt/amiga-runtime/runtime/aros/pinned.env}
+WORK=${AROS_BUILD_WORKDIR:-/tmp/amiga-runtime-aros-build}
+JOBS=${AROS_BUILD_JOBS:-2}
 mkdir -p "$DEST"
 
 # shellcheck disable=SC1090
 . "$PIN"
 
-: "${AROS_BUILD_DATE:?AROS_BUILD_DATE is required}"
-: "${AROS_ARCHIVE:?AROS_ARCHIVE is required}"
+: "${AROS_SOURCE_REPOSITORY:?AROS_SOURCE_REPOSITORY is required}"
+: "${AROS_SOURCE_COMMIT:?AROS_SOURCE_COMMIT is required}"
+: "${AROS_SOURCE_TARGET:?AROS_SOURCE_TARGET is required}"
+test "$AROS_SOURCE_TARGET" = amiga-m68k || { echo "Unsupported AROS source target: $AROS_SOURCE_TARGET" >&2; exit 64; }
 
-expected_archive="AROS-${AROS_BUILD_DATE}-amiga-m68k-boot-iso.zip"
-test "$AROS_ARCHIVE" = "$expected_archive" || { echo "Pinned archive is not the expected amiga-m68k boot ISO: $AROS_ARCHIVE" >&2; exit 64; }
-if [ -n "${AROS_FLOPPY_ARCHIVE:-}" ]; then
-    expected_floppy="AROS-${AROS_BUILD_DATE}-amiga-m68k-boot-floppy.lha"
-    test "$AROS_FLOPPY_ARCHIVE" = "$expected_floppy" || { echo "Pinned archive is not the expected amiga-m68k boot floppy: $AROS_FLOPPY_ARCHIVE" >&2; exit 64; }
-fi
+rm -rf "$WORK"
+mkdir -p "$WORK"
+git clone --filter=blob:none --no-checkout "$AROS_SOURCE_REPOSITORY" "$WORK/src"
+git -C "$WORK/src" checkout --detach "$AROS_SOURCE_COMMIT"
+test "$(git -C "$WORK/src" rev-parse HEAD)" = "$AROS_SOURCE_COMMIT" || { echo 'AROS source pin mismatch' >&2; exit 65; }
+git -C "$WORK/src" submodule update --init --recursive
 
-base_path="nightly2/$AROS_BUILD_DATE/Binaries"
-archive="$DEST/$AROS_ARCHIVE"
-md5file="$archive.md5"
+mkdir -p "$WORK/build"
+cd "$WORK/build"
+"$WORK/src/configure" --target=amiga-m68k --with-serial-debug=yes
+make -j"$JOBS"
+make -j"$JOBS" distfiles
 
-# SourceForge's /download endpoint occasionally returns a transient error while
-# a file is still present on a mirror. Try the canonical endpoint first and the
-# downloads host second. Integrity is checked independently below.
-download_sourceforge() {
-    output=$1
-    relative=$2
-    canonical="https://sourceforge.net/projects/aros/files/$relative/download"
-    direct="https://downloads.sourceforge.net/project/aros/$relative"
-    rm -f "$output.tmp"
-    for url in "$canonical" "$direct"; do
-        echo "Downloading $url" >&2
-        if curl -fL --retry 3 --retry-all-errors --connect-timeout 20 \
-            -A 'amiga-runtime/1.0 (+https://github.com/Ploos-AS/amiga-runtime)' \
-            "$url" -o "$output.tmp"; then
-            mv "$output.tmp" "$output"
-            printf '%s\n' "$url"
-            return 0
-        fi
-        rm -f "$output.tmp"
-    done
-    echo "Unable to download pinned AROS artifact: $relative" >&2
-    return 1
-}
+# The official amiga-m68k build emits redistributable media under distfiles.
+dist="$WORK/build/distfiles"
+test -d "$dist" || { echo 'AROS amiga-m68k distfiles directory not produced' >&2; exit 66; }
+iso=$(find "$dist" -type f -iname '*.iso' -print -quit)
+test -n "$iso" || { echo 'AROS amiga-m68k ISO not produced' >&2; exit 66; }
 
-verify_md5() {
-    payload=$1
-    checksum=$2
-    expected=$(awk '{print $1}' "$checksum" | head -n1)
-    actual=$(md5sum "$payload" | awk '{print $1}')
-    case "$expected" in
-        [0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]*) ;;
-        *) echo "Invalid upstream checksum response for $payload" >&2; exit 65 ;;
-    esac
-    test "$actual" = "$expected" || { echo "AROS upstream checksum mismatch for $payload" >&2; exit 65; }
-    printf '%s' "$actual"
-}
-
-archive_url=$(download_sourceforge "$archive" "$base_path/$AROS_ARCHIVE")
-md5_url=$(download_sourceforge "$md5file" "$base_path/$AROS_ARCHIVE.md5")
-actual=$(verify_md5 "$archive" "$md5file")
-actual_sha256=$(sha256sum "$archive" | awk '{print $1}')
-if [ -n "${AROS_SHA256:-}" ]; then
-    test "$actual_sha256" = "$AROS_SHA256" || { echo "AROS pinned SHA-256 mismatch" >&2; exit 65; }
-fi
-printf '%s  %s\n' "$actual_sha256" "$AROS_ARCHIVE" | tee "$DEST/archive.sha256"
-
-rm -rf "$DEST/unpacked" "$DEST/iso-root" "$DEST/floppy-unpacked"
-mkdir -p "$DEST/unpacked" "$DEST/iso-root"
-unzip -q "$archive" -d "$DEST/unpacked"
-iso=$(find "$DEST/unpacked" -type f -iname '*.iso' -print -quit)
-test -n "$iso" || { echo 'AROS ISO not found in archive' >&2; exit 66; }
+rm -rf "$DEST/iso-root"
+mkdir -p "$DEST/iso-root"
 cp "$iso" "$DEST/aros.iso"
 xorriso -osirrox on -indev "$DEST/aros.iso" -extract / "$DEST/iso-root" >/dev/null 2>&1
-
 rom=$(find "$DEST/iso-root" -type f -iname 'aros-rom.bin' -print -quit)
 ext=$(find "$DEST/iso-root" -type f -iname 'aros-ext.bin' -print -quit)
-test -n "$rom" && test -n "$ext" || { echo 'AROS m68k ROM pair not found in ISO' >&2; exit 66; }
+test -n "$rom" && test -n "$ext" || { echo 'AROS m68k ROM pair not found in built ISO' >&2; exit 66; }
 cp "$rom" "$DEST/aros-rom.bin"
 cp "$ext" "$DEST/aros-ext.bin"
 
-floppy_manifest=''
-if [ -n "${AROS_FLOPPY_ARCHIVE:-}" ]; then
-    floppy_archive="$DEST/$AROS_FLOPPY_ARCHIVE"
-    floppy_md5file="$floppy_archive.md5"
-    floppy_url=$(download_sourceforge "$floppy_archive" "$base_path/$AROS_FLOPPY_ARCHIVE")
-    floppy_md5_url=$(download_sourceforge "$floppy_md5file" "$base_path/$AROS_FLOPPY_ARCHIVE.md5")
-    floppy_md5=$(verify_md5 "$floppy_archive" "$floppy_md5file")
-    floppy_sha256=$(sha256sum "$floppy_archive" | awk '{print $1}')
-    if [ -n "${AROS_FLOPPY_SHA256:-}" ]; then
-        test "$floppy_sha256" = "$AROS_FLOPPY_SHA256" || { echo "AROS floppy pinned SHA-256 mismatch" >&2; exit 65; }
-    fi
-    mkdir -p "$DEST/floppy-unpacked"
-    bsdtar -xf "$floppy_archive" -C "$DEST/floppy-unpacked"
-    adf=$(find "$DEST/floppy-unpacked" -type f \( -iname '*.adf' -o -iname '*.img' \) -print -quit)
-    test -n "$adf" || { echo 'AROS m68k boot floppy image not found in archive' >&2; exit 66; }
-    cp "$adf" "$DEST/aros-boot.adf"
-    floppy_manifest=$(cat <<EOF
-floppy_archive=$AROS_FLOPPY_ARCHIVE
-floppy_source_url=$floppy_url
-floppy_checksum_url=$floppy_md5_url
-floppy_md5=$floppy_md5
-floppy_sha256=$floppy_sha256
-boot_adf_sha256=$(sha256sum "$DEST/aros-boot.adf" | awk '{print $1}')
-EOF
-)
-else
-    rm -f "$DEST/aros-boot.adf"
-fi
-
+iso_sha256=$(sha256sum "$DEST/aros.iso" | awk '{print $1}')
+rom_sha256=$(sha256sum "$DEST/aros-rom.bin" | awk '{print $1}')
+ext_sha256=$(sha256sum "$DEST/aros-ext.bin" | awk '{print $1}')
+printf '%s  %s\n' "$iso_sha256" aros.iso > "$DEST/archive.sha256"
 {
-  echo "build_date=$AROS_BUILD_DATE"
-  echo "archive=$AROS_ARCHIVE"
-  echo "source_url=$archive_url"
-  echo "checksum_url=$md5_url"
-  echo "md5=$actual"
-  echo "sha256=$actual_sha256"
-  [ -z "$floppy_manifest" ] || printf '%s\n' "$floppy_manifest"
-  echo "rom_sha256=$(sha256sum "$DEST/aros-rom.bin" | awk '{print $1}')"
-  echo "ext_sha256=$(sha256sum "$DEST/aros-ext.bin" | awk '{print $1}')"
+    echo 'acquisition=source-build'
+    echo "source_repository=$AROS_SOURCE_REPOSITORY"
+    echo "source_commit=$AROS_SOURCE_COMMIT"
+    echo "source_target=$AROS_SOURCE_TARGET"
+    echo 'configure=--target=amiga-m68k --with-serial-debug=yes'
+    echo "iso_sha256=$iso_sha256"
+    echo "rom_sha256=$rom_sha256"
+    echo "ext_sha256=$ext_sha256"
 } > "$DEST/manifest.txt"
 cat "$DEST/manifest.txt"
-echo 'AROS m68k runtime prepared: PASS'
+echo 'AROS m68k runtime prepared from pinned source: PASS'
