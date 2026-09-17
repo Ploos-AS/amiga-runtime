@@ -3,26 +3,43 @@ set -eu
 
 AROS=${AROS_RUNTIME_DIR:-/opt/amiga-runtime/aros}
 EVIDENCE=${AMIGA_RUNTIME_EVIDENCE:-/work/evidence}
-TIMEOUT=${AMIGA_RUNTIME_BOOT_TIMEOUT:-30}
-PROFILE=${1:-a1200-020}
+TIMEOUT=${AMIGA_RUNTIME_BOOT_TIMEOUT:-60}
+PROFILE=${1:-a1200-020-aros}
 PROFILES=${AMIGA_RUNTIME_PROFILES:-/opt/amiga-runtime/profiles}
 GENERATOR=${AMIGA_RUNTIME_FS_UAE_GENERATOR:-/opt/amiga-runtime/lib/generate-fs-uae-config.py}
 MARKER=${AMIGA_RUNTIME_BOOT_MARKER:-AMIGA_RUNTIME_BOOT_OK}
 
 mkdir -p "$EVIDENCE"
 rm -f "$EVIDENCE/$MARKER"
-for f in "$AROS/aros.iso" "$AROS/aros-rom.bin" "$AROS/aros-ext.bin" "$AROS/aros-boot.adf"; do
+for f in "$AROS/aros.iso" "$AROS/aros-rom.bin" "$AROS/aros-ext.bin"; do
     test -s "$f" || { echo "missing prepared AROS artifact: $f" >&2; exit 69; }
 done
+test -d "$AROS/iso-root/S" || { echo "missing extracted AROS system tree: $AROS/iso-root" >&2; exit 69; }
 profile="$PROFILES/$PROFILE.conf"
 test -f "$profile" || { echo "unknown profile: $PROFILE" >&2; exit 66; }
 test -f "$GENERATOR" || { echo "missing FS-UAE config generator: $GENERATOR" >&2; exit 69; }
 
-sha256sum "$AROS/aros.iso" "$AROS/aros-rom.bin" "$AROS/aros-ext.bin" "$AROS/aros-boot.adf" > "$EVIDENCE/runtime.sha256"
-qualified_iso="$EVIDENCE/aros-qualified.iso"
-prepare-aros-guest-marker "$AROS/aros.iso" "$qualified_iso" > "$EVIDENCE/qualified-iso.sha256"
+sha256sum "$AROS/aros.iso" "$AROS/aros-rom.bin" "$AROS/aros-ext.bin" > "$EVIDENCE/runtime.sha256"
+
+# The m68k nightly ISO is system media, not a PC-style El Torito boot image.
+# FS-UAE can expose its extracted tree directly as an Amiga volume.  Use a
+# private writable copy so the guest can execute the normal Startup-Sequence
+# and our User-Startup proof hook without changing the pinned upstream media.
+system_dir=$(mktemp -d /tmp/amiga-runtime-aros.XXXXXX)
+trap 'rm -rf "$system_dir"' EXIT HUP INT TERM
+cp -a "$AROS/iso-root/." "$system_dir/"
+startup="$system_dir/S/User-Startup"
+if [ -f "$startup" ]; then
+    printf '\n' >> "$startup"
+else
+    : > "$startup"
+fi
+printf 'Echo "%s" >Evidence:%s\n' "$MARKER" "$MARKER" >> "$startup"
+printf '%s\n' "$MARKER" > "$EVIDENCE/expected-marker.txt"
+
 config="$EVIDENCE/fs-uae.conf"
-python3 "$GENERATOR" "$profile" "$AROS/aros-rom.bin" "$AROS/aros-ext.bin" "$qualified_iso" "$AROS/aros-boot.adf" "$config" "$EVIDENCE"
+AMIGA_RUNTIME_AROS_SYSTEM_DIR="$system_dir" \
+python3 "$GENERATOR" "$profile" "$AROS/aros-rom.bin" "$AROS/aros-ext.bin" "$AROS/aros.iso" /dev/null "$config" "$EVIDENCE"
 
 set +e
 XDG_RUNTIME_DIR=/tmp/amiga-runtime-xdg
@@ -61,7 +78,7 @@ data = {
     "emulator_started": started == "true",
     "guest_boot_proven": guest == "true",
     "status": "PASS" if passed else "FAIL",
-    "proof": "guest User-Startup marker on host-mounted Evidence volume",
+    "proof": "guest User-Startup marker from extracted AROS system volume",
 }
 pathlib.Path(out).write_text(json.dumps(data, indent=2) + "\n")
 PY
