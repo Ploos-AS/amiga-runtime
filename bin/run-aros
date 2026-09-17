@@ -1,0 +1,34 @@
+#!/bin/sh
+set -eu
+
+program=${1:?usage: run-aros PROGRAM PROFILE}
+profile=${2:?usage: run-aros PROGRAM PROFILE}
+PROFILES=${AMIGA_RUNTIME_PROFILES:-/opt/amiga-runtime/profiles}
+AROS_IMAGE=${AROS_BOOT_IMAGE_PREPARED:-/opt/amiga-runtime/aros/aros.adf}
+EVIDENCE=${AMIGA_RUNTIME_EVIDENCE:-/work/evidence}
+TIMEOUT=${AMIGA_RUNTIME_TIMEOUT:-60}
+
+mkdir -p "$EVIDENCE"
+test -f "$program" || { echo "program not found: $program" >&2; exit 66; }
+test -f "$PROFILES/$profile.conf" || { echo "unknown profile: $profile" >&2; exit 66; }
+test -f "$AROS_IMAGE" || { echo "AROS image not prepared: $AROS_IMAGE" >&2; exit 69; }
+
+cp "$program" "$EVIDENCE/payload"
+sha256sum "$program" > "$EVIDENCE/payload.sha256"
+
+set +e
+timeout "$TIMEOUT" fs-uae "$PROFILES/$profile.conf" \
+    --floppy-drive-0="$AROS_IMAGE" \
+    --console-debugger=0 \
+    >"$EVIDENCE/fs-uae.stdout.log" 2>"$EVIDENCE/fs-uae.stderr.log"
+rc=$?
+set -e
+
+case "$rc" in
+    0) status=PASS ;;
+    124) status=TIMEOUT ;;
+    *) status=FAIL ;;
+esac
+
+python3 /opt/amiga-runtime/lib/write-result.py "$status" "$rc" "$profile" "$program" "$EVIDENCE"
+[ "$status" = PASS ]
