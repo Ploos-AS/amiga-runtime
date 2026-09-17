@@ -22,27 +22,27 @@ jobs:
         run: docker run --rm amiga-runtime:m2 self-test
       - name: Profile inventory
         run: docker run --rm amiga-runtime:m2 profiles
-      - name: Cache pinned AROS m68k runtime
+      - name: Cache pinned prebuilt AROS m68k runtime
         id: aros-cache
         uses: actions/cache@v4
         with:
           path: aros-cache
-          key: amiga-runtime-aros-${{ runner.os }}-${{ hashFiles('runtime/aros/pinned.env', 'bin/prepare-aros') }}
-      - name: Prepare pinned AROS m68k runtime
+          key: amiga-runtime-aros-prebuilt-${{ runner.os }}-${{ hashFiles('runtime/aros/pinned.env', 'bin/prepare-aros') }}
+      - name: Acquire pinned prebuilt AROS m68k runtime
         if: steps.aros-cache.outputs.cache-hit != 'true'
         run: |
-          mkdir -p "$PWD/aros-cache" "$PWD/aros-build-diagnostics"
+          mkdir -p "$PWD/aros-cache" "$PWD/aros-acquisition-diagnostics"
           set -o pipefail
           docker run --rm \
             -v "$PWD/aros-cache:/opt/amiga-runtime/aros" \
             amiga-runtime:m2 prepare-aros \
-            2>&1 | tee "$PWD/aros-build-diagnostics/prepare-aros.log"
-      - name: Upload AROS build diagnostics
+            2>&1 | tee "$PWD/aros-acquisition-diagnostics/prepare-aros.log"
+      - name: Upload AROS acquisition diagnostics
         if: always() && steps.aros-cache.outputs.cache-hit != 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: aros-build-diagnostics
-          path: aros-build-diagnostics/
+          name: aros-acquisition-diagnostics
+          path: aros-acquisition-diagnostics/
           if-no-files-found: warn
       - name: Verify pinned AROS m68k runtime
         run: |
@@ -51,6 +51,8 @@ jobs:
           test -s aros-cache/aros-ext.bin
           test -d aros-cache/iso-root/S
           test -s aros-cache/manifest.txt
+          grep -qx 'acquisition=upstream-prebuilt' aros-cache/manifest.txt
+          grep -qx 'target=amiga-m68k' aros-cache/manifest.txt
           cat aros-cache/manifest.txt
       - name: Qualify AROS guest boot
         run: |
