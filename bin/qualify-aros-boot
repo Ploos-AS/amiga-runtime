@@ -11,18 +11,18 @@ MARKER=${AMIGA_RUNTIME_BOOT_MARKER:-AMIGA_RUNTIME_BOOT_OK}
 
 mkdir -p "$EVIDENCE"
 rm -f "$EVIDENCE/$MARKER"
-for f in "$AROS/aros.iso" "$AROS/aros-rom.bin" "$AROS/aros-ext.bin"; do
+for f in "$AROS/aros.iso" "$AROS/aros-rom.bin" "$AROS/aros-ext.bin" "$AROS/aros-boot.adf"; do
     test -s "$f" || { echo "missing prepared AROS artifact: $f" >&2; exit 69; }
 done
 profile="$PROFILES/$PROFILE.conf"
 test -f "$profile" || { echo "unknown profile: $PROFILE" >&2; exit 66; }
 test -f "$GENERATOR" || { echo "missing FS-UAE config generator: $GENERATOR" >&2; exit 69; }
 
-sha256sum "$AROS/aros.iso" "$AROS/aros-rom.bin" "$AROS/aros-ext.bin" > "$EVIDENCE/runtime.sha256"
+sha256sum "$AROS/aros.iso" "$AROS/aros-rom.bin" "$AROS/aros-ext.bin" "$AROS/aros-boot.adf" > "$EVIDENCE/runtime.sha256"
 qualified_iso="$EVIDENCE/aros-qualified.iso"
 prepare-aros-guest-marker "$AROS/aros.iso" "$qualified_iso" > "$EVIDENCE/qualified-iso.sha256"
 config="$EVIDENCE/fs-uae.conf"
-python3 "$GENERATOR" "$profile" "$AROS/aros-rom.bin" "$AROS/aros-ext.bin" "$qualified_iso" "$config" "$EVIDENCE"
+python3 "$GENERATOR" "$profile" "$AROS/aros-rom.bin" "$AROS/aros-ext.bin" "$qualified_iso" "$AROS/aros-boot.adf" "$config" "$EVIDENCE"
 
 set +e
 XDG_RUNTIME_DIR=/tmp/amiga-runtime-xdg
