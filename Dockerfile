@@ -9,6 +9,7 @@ RUN apt-get update \
        bison \
        build-essential \
        ca-certificates \
+       cmake \
        coreutils \
        curl \
        file \
