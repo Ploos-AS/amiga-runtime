@@ -3,6 +3,7 @@
 check:
 	sh -n bin/amiga-runtime
 	sh -n bin/prepare-aros
+	sh -n bin/prepare-aros-guest-marker
 	sh -n bin/run-aros
 	sh -n bin/qualify-aros-boot
 	python3 -m py_compile lib/write-result.py lib/generate-fs-uae-config.py
@@ -13,7 +14,7 @@ check:
 	test -f profiles/a4000.conf
 	@# Reject committed proprietary media files, not legitimate FS-UAE option names.
 	@! find . -type f \( -iname 'kickstart*.rom' -o -iname 'kickstart*.bin' -o -iname 'workbench*.adf' -o -iname 'workbench*.hdf' \) -print -quit | grep -q .
-	@echo 'M1 repository checks: PASS'
+	@echo 'M2 repository checks: PASS'
 
 container-build:
 	docker build -t amiga-runtime:m1 .
