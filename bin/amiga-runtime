@@ -8,6 +8,7 @@ usage() {
 usage:
   amiga-runtime self-test
   amiga-runtime profiles
+  amiga-runtime prepare-aros
   amiga-runtime test PROGRAM [--runtime aros] [--profile PROFILE]
 EOF
 }
@@ -16,11 +17,18 @@ case "${1:-}" in
     self-test)
         command -v fs-uae >/dev/null
         command -v python3 >/dev/null
+        command -v timeout >/dev/null
+        command -v prepare-aros >/dev/null
+        command -v run-aros >/dev/null
         test -d "$PROFILES"
-        echo 'amiga-runtime M0 self-test: PASS'
+        test -f /opt/amiga-runtime/lib/write-result.py
+        echo 'amiga-runtime M1 harness self-test: PASS'
         ;;
     profiles)
         find "$PROFILES" -maxdepth 1 -type f -name '*.conf' -printf '%f\n' | sed 's/\.conf$//' | sort
+        ;;
+    prepare-aros)
+        exec prepare-aros
         ;;
     test)
         shift
@@ -36,10 +44,8 @@ case "${1:-}" in
                 *) echo "unknown argument: $1" >&2; exit 64 ;;
             esac
         done
-        test "$runtime" = aros || { echo "M0 supports only the AROS contract" >&2; exit 65; }
-        test -f "$PROFILES/$profile.conf" || { echo "unknown profile: $profile" >&2; exit 66; }
-        echo "M0 contract OK: program=$program runtime=$runtime profile=$profile"
-        echo 'Execution backend: PENDING (M1)'
+        test "$runtime" = aros || { echo "M1 supports only the AROS backend" >&2; exit 65; }
+        exec run-aros "$program" "$profile"
         ;;
     -h|--help|help|'') usage ;;
     *) usage >&2; exit 64 ;;
