@@ -11,8 +11,10 @@ RUN apt-get update \
        ca-certificates \
        coreutils \
        curl \
+       file \
        flex \
        fs-uae \
+       gawk \
        git \
        jq \
        libarchive-tools \
