@@ -21,20 +21,22 @@ test -f "$GENERATOR" || { echo "missing FS-UAE config generator: $GENERATOR" >&2
 
 sha256sum "$AROS/aros.iso" "$AROS/aros-rom.bin" "$AROS/aros-ext.bin" > "$EVIDENCE/runtime.sha256"
 
-# The m68k nightly ISO is system media, not a PC-style El Torito boot image.
-# FS-UAE can expose its extracted tree directly as an Amiga volume.  Use a
-# private writable copy so the guest can execute the normal Startup-Sequence
-# and our User-Startup proof hook without changing the pinned upstream media.
+# Follow the already-qualified AmiGuard AROS guest pattern exactly: patch
+# S/Startup-Sequence in the writable extracted system tree and write the proof
+# marker onto SYS:.  Because the AROS tree is a host-mounted directory volume,
+# the host can observe the guest-created file directly without relying on a
+# second volume name or User-Startup being invoked.
 system_dir=$(mktemp -d /tmp/amiga-runtime-aros.XXXXXX)
 trap 'rm -rf "$system_dir"' EXIT HUP INT TERM
 cp -a "$AROS/iso-root/." "$system_dir/"
-startup="$system_dir/S/User-Startup"
-if [ -f "$startup" ]; then
-    printf '\n' >> "$startup"
-else
-    : > "$startup"
-fi
-printf 'Echo "%s" >DH1:%s\n' "$MARKER" "$MARKER" >> "$startup"
+startup=$(find "$system_dir" -type f -ipath '*/s/startup-sequence' -print -quit)
+test -n "$startup" || { echo "AROS system tree lacks S/Startup-Sequence" >&2; exit 69; }
+aros_root=$(dirname "$(dirname "$startup")")
+cp "$startup" "$startup.amiga-runtime-original"
+cat >"$startup" <<EOF
+SYS:C/Echo "$MARKER" >SYS:$MARKER
+SYS:C/Execute SYS:S/Startup-Sequence.amiga-runtime-original
+EOF
 printf '%s\n' "$MARKER" > "$EVIDENCE/expected-marker.txt"
 
 config="$EVIDENCE/fs-uae.conf"
@@ -57,7 +59,7 @@ case "$rc" in
     0|124) emulator_started=true ;;
     *) emulator_started=false ;;
 esac
-if [ -f "$EVIDENCE/$MARKER" ] && grep -qx "$MARKER" "$EVIDENCE/$MARKER"; then
+if [ -f "$aros_root/$MARKER" ] && grep -qx "$MARKER" "$aros_root/$MARKER"; then
     guest_boot_proven=true
 else
     guest_boot_proven=false
@@ -78,7 +80,7 @@ data = {
     "emulator_started": started == "true",
     "guest_boot_proven": guest == "true",
     "status": "PASS" if passed else "FAIL",
-    "proof": "guest User-Startup marker written to second FS-UAE directory volume",
+    "proof": "guest Startup-Sequence marker written to SYS on host-mounted AROS system volume",
 }
 pathlib.Path(out).write_text(json.dumps(data, indent=2) + "\n")
 PY
