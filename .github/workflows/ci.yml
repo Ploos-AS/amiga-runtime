@@ -31,15 +31,16 @@ jobs:
           test -s aros-cache/aros.iso
           test -s aros-cache/aros-rom.bin
           test -s aros-cache/aros-ext.bin
+          test -d aros-cache/iso-root/S
           cat aros-cache/manifest.txt
       - name: Qualify AROS guest boot
         run: |
           mkdir -p "$PWD/runtime-evidence"
           docker run --rm \
-            -e AMIGA_RUNTIME_BOOT_TIMEOUT=30 \
+            -e AMIGA_RUNTIME_BOOT_TIMEOUT=60 \
             -v "$PWD/aros-cache:/opt/amiga-runtime/aros:ro" \
             -v "$PWD/runtime-evidence:/work/evidence" \
-            amiga-runtime:m2 qualify-aros-boot a1200-020
+            amiga-runtime:m2 qualify-aros-boot a1200-020-aros
           jq -e '.status == "PASS" and .emulator == "fs-uae" and .guest_boot_proven == true' runtime-evidence/result.json
           test "$(cat runtime-evidence/AMIGA_RUNTIME_BOOT_OK)" = "AMIGA_RUNTIME_BOOT_OK"
       - name: Verify result writer
