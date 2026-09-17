@@ -24,10 +24,8 @@ sha256sum "$AROS/aros.iso" "$AROS/aros-rom.bin" "$AROS/aros-ext.bin" > "$EVIDENC
 # first runtime gate; filesystem/startup qualification is a later gate.
 printf '%s\n' "$MARKER" > "$EVIDENCE/expected-marker.txt"
 
-printf '%s\n' "$MARKER" > "$EVIDENCE/expected-marker.txt"
 
 config="$EVIDENCE/fs-uae.conf"
-AMIGA_RUNTIME_AROS_SYSTEM_DIR="$system_dir" \
 python3 "$GENERATOR" "$profile" "$AROS/aros-rom.bin" "$AROS/aros-ext.bin" "$AROS/aros.iso" /dev/null "$config" "$EVIDENCE"
 
 set +e
