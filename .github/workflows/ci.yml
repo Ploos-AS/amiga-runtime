@@ -31,10 +31,19 @@ jobs:
       - name: Prepare pinned AROS m68k runtime
         if: steps.aros-cache.outputs.cache-hit != 'true'
         run: |
-          mkdir -p "$PWD/aros-cache"
+          mkdir -p "$PWD/aros-cache" "$PWD/aros-build-diagnostics"
+          set -o pipefail
           docker run --rm \
             -v "$PWD/aros-cache:/opt/amiga-runtime/aros" \
-            amiga-runtime:m2 prepare-aros
+            amiga-runtime:m2 prepare-aros \
+            2>&1 | tee "$PWD/aros-build-diagnostics/prepare-aros.log"
+      - name: Upload AROS build diagnostics
+        if: always() && steps.aros-cache.outputs.cache-hit != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: aros-build-diagnostics
+          path: aros-build-diagnostics/
+          if-no-files-found: warn
       - name: Verify pinned AROS m68k runtime
         run: |
           test -s aros-cache/aros.iso
