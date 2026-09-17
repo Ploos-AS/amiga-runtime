@@ -83,6 +83,20 @@ test -n "$rom" && test -n "$ext" || { echo 'AROS m68k ROM pair not found in upst
 cp "$rom" "$DEST/aros-rom.bin"
 cp "$ext" "$DEST/aros-ext.bin"
 
+# Preserve a deterministic inventory of the 7z-extracted filesystem so CI
+# failures can be diagnosed from artifacts instead of inferred from layout.
+(
+    cd "$DEST/iso-root"
+    find . -maxdepth 5 -printf '%y %p\n' | LC_ALL=C sort
+) > "$DEST/iso-root-inventory.txt"
+
+startup=$(find "$DEST/iso-root" -type f -ipath '*/s/startup-sequence' -print -quit || true)
+if [ -n "$startup" ]; then
+    printf '%s\n' "$startup" > "$DEST/startup-sequence-path.txt"
+else
+    printf '%s\n' 'NOT_FOUND' > "$DEST/startup-sequence-path.txt"
+fi
+
 iso_sha256=$(sha256sum "$DEST/aros.iso" | awk '{print $1}')
 rom_sha256=$(sha256sum "$DEST/aros-rom.bin" | awk '{print $1}')
 ext_sha256=$(sha256sum "$DEST/aros-ext.bin" | awk '{print $1}')
