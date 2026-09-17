@@ -3,6 +3,13 @@ set -eu
 
 DEST=${AROS_RUNTIME_DIR:-/opt/amiga-runtime/aros}
 PIN=${AROS_PIN_FILE:-/opt/amiga-runtime/runtime/aros/pinned.env}
+# runtime/ is copied to /opt/amiga-runtime/runtime in the image; keep a
+# compatibility fallback for older image layouts that copied its contents one
+# level higher.
+if [ ! -f "$PIN" ] && [ -f /opt/amiga-runtime/aros/pinned.env ]; then
+    PIN=/opt/amiga-runtime/aros/pinned.env
+fi
+test -f "$PIN" || { echo "AROS pin file not found: $PIN" >&2; exit 66; }
 WORK=${AROS_PREPARE_WORKDIR:-/tmp/amiga-runtime-aros}
 mkdir -p "$DEST"
 
