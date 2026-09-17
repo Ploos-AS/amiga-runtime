@@ -2,25 +2,47 @@
 set -eu
 
 DEST=${AROS_RUNTIME_DIR:-/opt/amiga-runtime/aros}
-OUT=$DEST/aros.adf
+PIN=${AROS_PIN_FILE:-/opt/amiga-runtime/runtime/aros/pinned.env}
 mkdir -p "$DEST"
 
-if [ -n "${AROS_BOOT_IMAGE:-}" ]; then
-    test -f "$AROS_BOOT_IMAGE" || { echo "AROS_BOOT_IMAGE not found: $AROS_BOOT_IMAGE" >&2; exit 66; }
-    cp "$AROS_BOOT_IMAGE" "$OUT"
-elif [ -n "${AROS_BOOT_URL:-}" ]; then
-    test -n "${AROS_BOOT_SHA256:-}" || { echo 'AROS_BOOT_SHA256 is required with AROS_BOOT_URL' >&2; exit 64; }
-    curl -fsSL --retry 3 "$AROS_BOOT_URL" -o "$OUT.tmp"
-    printf '%s  %s\n' "$AROS_BOOT_SHA256" "$OUT.tmp" | sha256sum -c - >/dev/null
-    mv "$OUT.tmp" "$OUT"
-else
-    echo 'Set AROS_BOOT_IMAGE or AROS_BOOT_URL + AROS_BOOT_SHA256' >&2
-    exit 64
-fi
+# shellcheck disable=SC1090
+. "$PIN"
+archive="$DEST/$AROS_ARCHIVE"
+md5file="$archive.md5"
 
-if [ -n "${AROS_BOOT_SHA256:-}" ]; then
-    printf '%s  %s\n' "$AROS_BOOT_SHA256" "$OUT" | sha256sum -c - >/dev/null
-fi
+curl -fsSL --retry 3 "$AROS_URL" -o "$archive.tmp"
+curl -fsSL --retry 3 "$AROS_MD5_URL" -o "$md5file"
+mv "$archive.tmp" "$archive"
 
-sha256sum "$OUT"
-echo "AROS runtime artifact ready: $OUT"
+expected=$(awk '{print $1}' "$md5file" | head -n1)
+actual=$(md5sum "$archive" | awk '{print $1}')
+test -n "$expected" && test "$actual" = "$expected" || {
+    echo "AROS upstream checksum mismatch" >&2
+    exit 65
+}
+sha256sum "$archive" | tee "$DEST/archive.sha256"
+
+rm -rf "$DEST/unpacked" "$DEST/iso-root"
+mkdir -p "$DEST/unpacked" "$DEST/iso-root"
+unzip -q "$archive" -d "$DEST/unpacked"
+iso=$(find "$DEST/unpacked" -type f -name '*.iso' -print -quit)
+test -n "$iso" || { echo 'AROS ISO not found in archive' >&2; exit 66; }
+cp "$iso" "$DEST/aros.iso"
+xorriso -osirrox on -indev "$DEST/aros.iso" -extract / "$DEST/iso-root" >/dev/null 2>&1
+
+rom=$(find "$DEST/iso-root" -type f -iname 'aros-rom.bin' -print -quit)
+ext=$(find "$DEST/iso-root" -type f -iname 'aros-ext.bin' -print -quit)
+test -n "$rom" && test -n "$ext" || { echo 'AROS m68k ROM pair not found in ISO' >&2; exit 66; }
+cp "$rom" "$DEST/aros-rom.bin"
+cp "$ext" "$DEST/aros-ext.bin"
+
+{
+  echo "build_date=$AROS_BUILD_DATE"
+  echo "archive=$AROS_ARCHIVE"
+  echo "md5=$actual"
+  echo "sha256=$(sha256sum "$archive" | awk '{print $1}')"
+  echo "rom_sha256=$(sha256sum "$DEST/aros-rom.bin" | awk '{print $1}')"
+  echo "ext_sha256=$(sha256sum "$DEST/aros-ext.bin" | awk '{print $1}')"
+} > "$DEST/manifest.txt"
+cat "$DEST/manifest.txt"
+echo 'AROS m68k runtime prepared: PASS'
