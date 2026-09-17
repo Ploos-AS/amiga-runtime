@@ -79,4 +79,6 @@ jobs:
             evidence/
             runtime-evidence/
             aros-cache/manifest.txt
-            aros-cache/archive.sha256\n          aros-cache/iso-root-inventory.txt\n          aros-cache/startup-sequence-path.txt
+            aros-cache/archive.sha256
+            aros-cache/iso-root-inventory.txt
+            aros-cache/startup-sequence-path.txt
