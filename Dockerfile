@@ -22,6 +22,7 @@ RUN apt-get update \
        libncurses-dev \
        netpbm \
        python3 \
+       python3-mako \
        texinfo \
        unzip \
        xauth \
