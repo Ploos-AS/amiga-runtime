@@ -22,6 +22,15 @@ git -C "$WORK/src" checkout --detach "$AROS_SOURCE_COMMIT"
 test "$(git -C "$WORK/src" rev-parse HEAD)" = "$AROS_SOURCE_COMMIT" || { echo 'AROS source pin mismatch' >&2; exit 65; }
 git -C "$WORK/src" submodule update --init --recursive
 
+# The pinned upstream revision currently overfills its 880 KiB Emergency-Boot
+# floppy by a few KiB. The runtime bootstrap only needs the commands referenced
+# by Startup-Sequence.boot. Drop unrelated convenience commands from the
+# emergency floppy payload; they remain present on the generated Live CD.
+boot_mmake="$WORK/src/arch/m68k-amiga/boot/floppy/mmakefile.src"
+for command in Copy Date Dir Eval Filenote IconX Install Join List Protect Relabel Rename Shutdown Touch Type Version Wait Which; do
+    sed -i "/^[[:space:]]*C\/$command \\\\$/d" "$boot_mmake"
+done
+
 mkdir -p "$WORK/build"
 cd "$WORK/build"
 "$WORK/src/configure" --target=amiga-m68k --with-serial-debug=yes
@@ -53,6 +62,7 @@ printf '%s  %s\n' "$iso_sha256" aros.iso > "$DEST/archive.sha256"
     echo "source_repository=$AROS_SOURCE_REPOSITORY"
     echo "source_commit=$AROS_SOURCE_COMMIT"
     echo "source_target=$AROS_SOURCE_TARGET"
+    echo 'source_adjustment=trim-unused-emergency-boot-commands'
     echo 'configure=--target=amiga-m68k --with-serial-debug=yes'
     echo "iso_sha256=$iso_sha256"
     echo "rom_sha256=$rom_sha256"
