@@ -10,22 +10,21 @@ mkdir -p "$DEST"
 
 : "${AROS_BUILD_DATE:?AROS_BUILD_DATE is required}"
 : "${AROS_ARCHIVE:?AROS_ARCHIVE is required}"
-: "${AROS_FLOPPY_ARCHIVE:?AROS_FLOPPY_ARCHIVE is required}"
 
 expected_archive="AROS-${AROS_BUILD_DATE}-amiga-m68k-boot-iso.zip"
-expected_floppy="AROS-${AROS_BUILD_DATE}-amiga-m68k-boot-floppy.lha"
 test "$AROS_ARCHIVE" = "$expected_archive" || { echo "Pinned archive is not the expected amiga-m68k boot ISO: $AROS_ARCHIVE" >&2; exit 64; }
-test "$AROS_FLOPPY_ARCHIVE" = "$expected_floppy" || { echo "Pinned archive is not the expected amiga-m68k boot floppy: $AROS_FLOPPY_ARCHIVE" >&2; exit 64; }
+if [ -n "${AROS_FLOPPY_ARCHIVE:-}" ]; then
+    expected_floppy="AROS-${AROS_BUILD_DATE}-amiga-m68k-boot-floppy.lha"
+    test "$AROS_FLOPPY_ARCHIVE" = "$expected_floppy" || { echo "Pinned archive is not the expected amiga-m68k boot floppy: $AROS_FLOPPY_ARCHIVE" >&2; exit 64; }
+fi
 
 base_path="nightly2/$AROS_BUILD_DATE/Binaries"
 archive="$DEST/$AROS_ARCHIVE"
 md5file="$archive.md5"
-floppy_archive="$DEST/$AROS_FLOPPY_ARCHIVE"
-floppy_md5file="$floppy_archive.md5"
 
-# SourceForge's /download endpoint occasionally returns a transient 404 while
-# the file is still present on a mirror. Try the canonical endpoint first and
-# then the stable downloads host. Integrity is enforced independently below.
+# SourceForge's /download endpoint occasionally returns a transient error while
+# a file is still present on a mirror. Try the canonical endpoint first and the
+# downloads host second. Integrity is checked independently below.
 download_sourceforge() {
     output=$1
     relative=$2
@@ -62,26 +61,15 @@ verify_md5() {
 
 archive_url=$(download_sourceforge "$archive" "$base_path/$AROS_ARCHIVE")
 md5_url=$(download_sourceforge "$md5file" "$base_path/$AROS_ARCHIVE.md5")
-floppy_url=$(download_sourceforge "$floppy_archive" "$base_path/$AROS_FLOPPY_ARCHIVE")
-floppy_md5_url=$(download_sourceforge "$floppy_md5file" "$base_path/$AROS_FLOPPY_ARCHIVE.md5")
-
 actual=$(verify_md5 "$archive" "$md5file")
-floppy_md5=$(verify_md5 "$floppy_archive" "$floppy_md5file")
 actual_sha256=$(sha256sum "$archive" | awk '{print $1}')
-floppy_sha256=$(sha256sum "$floppy_archive" | awk '{print $1}')
 if [ -n "${AROS_SHA256:-}" ]; then
     test "$actual_sha256" = "$AROS_SHA256" || { echo "AROS pinned SHA-256 mismatch" >&2; exit 65; }
 fi
-if [ -n "${AROS_FLOPPY_SHA256:-}" ]; then
-    test "$floppy_sha256" = "$AROS_FLOPPY_SHA256" || { echo "AROS floppy pinned SHA-256 mismatch" >&2; exit 65; }
-fi
-{
-    printf '%s  %s\n' "$actual_sha256" "$AROS_ARCHIVE"
-    printf '%s  %s\n' "$floppy_sha256" "$AROS_FLOPPY_ARCHIVE"
-} | tee "$DEST/archive.sha256"
+printf '%s  %s\n' "$actual_sha256" "$AROS_ARCHIVE" | tee "$DEST/archive.sha256"
 
 rm -rf "$DEST/unpacked" "$DEST/iso-root" "$DEST/floppy-unpacked"
-mkdir -p "$DEST/unpacked" "$DEST/iso-root" "$DEST/floppy-unpacked"
+mkdir -p "$DEST/unpacked" "$DEST/iso-root"
 unzip -q "$archive" -d "$DEST/unpacked"
 iso=$(find "$DEST/unpacked" -type f -iname '*.iso' -print -quit)
 test -n "$iso" || { echo 'AROS ISO not found in archive' >&2; exit 66; }
@@ -94,10 +82,34 @@ test -n "$rom" && test -n "$ext" || { echo 'AROS m68k ROM pair not found in ISO'
 cp "$rom" "$DEST/aros-rom.bin"
 cp "$ext" "$DEST/aros-ext.bin"
 
-bsdtar -xf "$floppy_archive" -C "$DEST/floppy-unpacked"
-adf=$(find "$DEST/floppy-unpacked" -type f \( -iname '*.adf' -o -iname '*.img' \) -print -quit)
-test -n "$adf" || { echo 'AROS m68k boot floppy image not found in archive' >&2; exit 66; }
-cp "$adf" "$DEST/aros-boot.adf"
+floppy_manifest=''
+if [ -n "${AROS_FLOPPY_ARCHIVE:-}" ]; then
+    floppy_archive="$DEST/$AROS_FLOPPY_ARCHIVE"
+    floppy_md5file="$floppy_archive.md5"
+    floppy_url=$(download_sourceforge "$floppy_archive" "$base_path/$AROS_FLOPPY_ARCHIVE")
+    floppy_md5_url=$(download_sourceforge "$floppy_md5file" "$base_path/$AROS_FLOPPY_ARCHIVE.md5")
+    floppy_md5=$(verify_md5 "$floppy_archive" "$floppy_md5file")
+    floppy_sha256=$(sha256sum "$floppy_archive" | awk '{print $1}')
+    if [ -n "${AROS_FLOPPY_SHA256:-}" ]; then
+        test "$floppy_sha256" = "$AROS_FLOPPY_SHA256" || { echo "AROS floppy pinned SHA-256 mismatch" >&2; exit 65; }
+    fi
+    mkdir -p "$DEST/floppy-unpacked"
+    bsdtar -xf "$floppy_archive" -C "$DEST/floppy-unpacked"
+    adf=$(find "$DEST/floppy-unpacked" -type f \( -iname '*.adf' -o -iname '*.img' \) -print -quit)
+    test -n "$adf" || { echo 'AROS m68k boot floppy image not found in archive' >&2; exit 66; }
+    cp "$adf" "$DEST/aros-boot.adf"
+    floppy_manifest=$(cat <<EOF
+floppy_archive=$AROS_FLOPPY_ARCHIVE
+floppy_source_url=$floppy_url
+floppy_checksum_url=$floppy_md5_url
+floppy_md5=$floppy_md5
+floppy_sha256=$floppy_sha256
+boot_adf_sha256=$(sha256sum "$DEST/aros-boot.adf" | awk '{print $1}')
+EOF
+)
+else
+    rm -f "$DEST/aros-boot.adf"
+fi
 
 {
   echo "build_date=$AROS_BUILD_DATE"
@@ -106,12 +118,7 @@ cp "$adf" "$DEST/aros-boot.adf"
   echo "checksum_url=$md5_url"
   echo "md5=$actual"
   echo "sha256=$actual_sha256"
-  echo "floppy_archive=$AROS_FLOPPY_ARCHIVE"
-  echo "floppy_source_url=$floppy_url"
-  echo "floppy_checksum_url=$floppy_md5_url"
-  echo "floppy_md5=$floppy_md5"
-  echo "floppy_sha256=$floppy_sha256"
-  echo "boot_adf_sha256=$(sha256sum "$DEST/aros-boot.adf" | awk '{print $1}')"
+  [ -z "$floppy_manifest" ] || printf '%s\n' "$floppy_manifest"
   echo "rom_sha256=$(sha256sum "$DEST/aros-rom.bin" | awk '{print $1}')"
   echo "ext_sha256=$(sha256sum "$DEST/aros-ext.bin" | awk '{print $1}')"
 } > "$DEST/manifest.txt"
