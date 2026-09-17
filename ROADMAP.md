@@ -37,14 +37,24 @@
 - [ ] AmigaOS 3.x profiles
 - [ ] Local qualification workflow
 
-## M4 — Expanded emulation matrix
+## M4 — Multi-emulator qualification matrix
 
+- [ ] Define emulator-neutral backend contract
+- [ ] Keep FS-UAE as the first/reference backend
+- [ ] Add Amiberry backend
+- [ ] Add `--emulator fs-uae|amiberry|fellowng` selection
+- [ ] Add `compare --emulators ...` qualification mode
+- [ ] Run identical runtime, machine profile and payload across selected emulators
+- [ ] Classify differing results as `EMULATOR_DIVERGENCE`
+- [ ] Preserve per-emulator logs, screenshots, serial output, JSON and JUnit evidence
+- [ ] Add FellowNG backend when FellowNG supports deterministic automated qualification
+- [ ] Keep FellowNG experimental until its regression suite is sufficiently mature
+- [ ] Feed reproducible FS-UAE/Amiberry/FellowNG divergences into FellowNG regression tests
 - [ ] A500 / 68000
 - [ ] A500+ / 68000
 - [ ] A1200 / 68020
 - [ ] A1200 / 68030
 - [ ] A4000-class profile
-- [ ] Additional emulator backend evaluation
 
 ## M5 — LibreKick/free-runtime integration
 
