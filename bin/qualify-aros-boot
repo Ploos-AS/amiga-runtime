@@ -72,4 +72,5 @@ PY
 
 [ "$emulator_started" = true ]
 [ "$guest_boot_proven" = true ]
-echo 'AROS FS-UAE guest boot marker: PASS'
+printf '%s\n' "$MARKER" > "$EVIDENCE/$MARKER"
+echo 'AROS FS-UAE ISO boot observation: PASS'
