@@ -3,12 +3,14 @@ set -eu
 
 AROS=${AROS_RUNTIME_DIR:-/opt/amiga-runtime/aros}
 EVIDENCE=${AMIGA_RUNTIME_EVIDENCE:-/work/evidence}
-TIMEOUT=${AMIGA_RUNTIME_BOOT_TIMEOUT:-20}
+TIMEOUT=${AMIGA_RUNTIME_BOOT_TIMEOUT:-30}
 PROFILE=${1:-a1200-020}
 PROFILES=${AMIGA_RUNTIME_PROFILES:-/opt/amiga-runtime/profiles}
 GENERATOR=${AMIGA_RUNTIME_FS_UAE_GENERATOR:-/opt/amiga-runtime/lib/generate-fs-uae-config.py}
+MARKER=${AMIGA_RUNTIME_BOOT_MARKER:-AMIGA_RUNTIME_BOOT_OK}
 
 mkdir -p "$EVIDENCE"
+rm -f "$EVIDENCE/$MARKER"
 for f in "$AROS/aros.iso" "$AROS/aros-rom.bin" "$AROS/aros-ext.bin"; do
     test -s "$f" || { echo "missing prepared AROS artifact: $f" >&2; exit 69; }
 done
@@ -17,13 +19,11 @@ test -f "$profile" || { echo "unknown profile: $PROFILE" >&2; exit 66; }
 test -f "$GENERATOR" || { echo "missing FS-UAE config generator: $GENERATOR" >&2; exit 69; }
 
 sha256sum "$AROS/aros.iso" "$AROS/aros-rom.bin" "$AROS/aros-ext.bin" > "$EVIDENCE/runtime.sha256"
+qualified_iso="$EVIDENCE/aros-qualified.iso"
+prepare-aros-guest-marker "$AROS/aros.iso" "$qualified_iso" > "$EVIDENCE/qualified-iso.sha256"
 config="$EVIDENCE/fs-uae.conf"
-python3 "$GENERATOR" "$profile" "$AROS/aros-rom.bin" "$AROS/aros-ext.bin" "$AROS/aros.iso" "$config"
+python3 "$GENERATOR" "$profile" "$AROS/aros-rom.bin" "$AROS/aros-ext.bin" "$qualified_iso" "$config" "$EVIDENCE"
 
-# FS-UAE needs a real X display/OpenGL context even for the CI startup gate.
-# xvfb-run supplies the virtual display; Mesa software rendering keeps this
-# independent of host GPU access. A timeout means the emulator stayed alive
-# for the complete gate window, but is NOT guest-boot proof.
 set +e
 XDG_RUNTIME_DIR=/tmp/amiga-runtime-xdg
 mkdir -p "$XDG_RUNTIME_DIR"
@@ -40,25 +40,32 @@ case "$rc" in
     0|124) emulator_started=true ;;
     *) emulator_started=false ;;
 esac
+if [ -f "$EVIDENCE/$MARKER" ] && grep -qx "$MARKER" "$EVIDENCE/$MARKER"; then
+    guest_boot_proven=true
+else
+    guest_boot_proven=false
+fi
 
-python3 - "$EVIDENCE/result.json" "$rc" "$PROFILE" "$emulator_started" <<'PY'
+python3 - "$EVIDENCE/result.json" "$rc" "$PROFILE" "$emulator_started" "$guest_boot_proven" <<'PY'
 import json, pathlib, sys
-out, rc, profile, started = sys.argv[1:]
+out, rc, profile, started, guest = sys.argv[1:]
+passed = started == "true" and guest == "true"
 data = {
     "schema": 1,
-    "milestone": "M1",
-    "qualification_level": "Q2-foundation",
+    "milestone": "M2",
+    "qualification_level": "Q3",
     "runtime": "aros-m68k",
     "emulator": "fs-uae",
     "profile": profile,
     "process_rc": int(rc),
     "emulator_started": started == "true",
-    "guest_boot_proven": False,
-    "status": "PASS" if started == "true" else "FAIL",
-    "boundary": "M1 emulator start gate only; guest marker proof is required before runtime qualification"
+    "guest_boot_proven": guest == "true",
+    "status": "PASS" if passed else "FAIL",
+    "proof": "guest User-Startup marker on host-mounted Evidence volume",
 }
 pathlib.Path(out).write_text(json.dumps(data, indent=2) + "\n")
 PY
 
 [ "$emulator_started" = true ]
-echo 'AROS FS-UAE emulator start gate: PASS (guest boot remains unproven)'
+[ "$guest_boot_proven" = true ]
+echo 'AROS FS-UAE guest boot marker: PASS'
