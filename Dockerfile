@@ -5,16 +5,22 @@ ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
        ca-certificates \
+       curl \
        fs-uae \
        jq \
        python3 \
+       coreutils \
     && rm -rf /var/lib/apt/lists/*
 
 COPY bin/amiga-runtime /usr/local/bin/amiga-runtime
+COPY bin/prepare-aros /usr/local/bin/prepare-aros
+COPY bin/run-aros /usr/local/bin/run-aros
+COPY lib /opt/amiga-runtime/lib
 COPY profiles /opt/amiga-runtime/profiles
+COPY runtime /opt/amiga-runtime/runtime
 
-RUN chmod 0755 /usr/local/bin/amiga-runtime \
-    && mkdir -p /work/input /work/evidence
+RUN chmod 0755 /usr/local/bin/amiga-runtime /usr/local/bin/prepare-aros /usr/local/bin/run-aros \
+    && mkdir -p /opt/amiga-runtime/aros /work/input /work/evidence
 
 WORKDIR /work
 ENTRYPOINT ["amiga-runtime"]
