@@ -22,13 +22,13 @@ jobs:
         run: docker run --rm amiga-runtime:m2 self-test
       - name: Profile inventory
         run: docker run --rm amiga-runtime:m2 profiles
-      - name: Cache pinned prebuilt AROS m68k runtime
+      - name: Cache resolved AROS m68k runtime
         id: aros-cache
         uses: actions/cache@v4
         with:
           path: aros-cache
-          key: amiga-runtime-aros-prebuilt-${{ runner.os }}-${{ hashFiles('runtime/aros/pinned.env', 'bin/prepare-aros') }}
-      - name: Acquire pinned prebuilt AROS m68k runtime
+          key: amiga-runtime-aros-index-${{ runner.os }}-${{ hashFiles('runtime/aros/pinned.env', 'bin/prepare-aros') }}
+      - name: Acquire AROS m68k runtime from official index
         if: steps.aros-cache.outputs.cache-hit != 'true'
         run: |
           mkdir -p "$PWD/aros-cache" "$PWD/aros-acquisition-diagnostics"
@@ -44,14 +44,14 @@ jobs:
           name: aros-acquisition-diagnostics
           path: aros-acquisition-diagnostics/
           if-no-files-found: warn
-      - name: Verify pinned AROS m68k runtime
+      - name: Verify resolved AROS m68k runtime
         run: |
           test -s aros-cache/aros.iso
           test -s aros-cache/aros-rom.bin
           test -s aros-cache/aros-ext.bin
           test -d aros-cache/iso-root/S
           test -s aros-cache/manifest.txt
-          grep -qx 'acquisition=upstream-prebuilt' aros-cache/manifest.txt
+          grep -qx 'acquisition=official-nightly-index' aros-cache/manifest.txt
           grep -qx 'target=amiga-m68k' aros-cache/manifest.txt
           cat aros-cache/manifest.txt
       - name: Qualify AROS guest boot
