@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -31,6 +32,15 @@ jobs:
           test -s aros-cache/aros-rom.bin
           test -s aros-cache/aros-ext.bin
           cat aros-cache/manifest.txt
+      - name: Qualify AROS emulator start
+        run: |
+          mkdir -p "$PWD/runtime-evidence"
+          docker run --rm \
+            -e AMIGA_RUNTIME_BOOT_TIMEOUT=15 \
+            -v "$PWD/aros-cache:/opt/amiga-runtime/aros:ro" \
+            -v "$PWD/runtime-evidence:/work/evidence" \
+            amiga-runtime:m1 qualify-aros-boot a1200-020
+          jq -e '.status == "PASS" and .emulator == "fs-uae" and .guest_boot_proven == false' runtime-evidence/result.json
       - name: Verify result writer
         run: |
           mkdir -p evidence
@@ -38,10 +48,12 @@ jobs:
           jq -e '.status == "PASS" and .runtime == "aros"' evidence/result.json
           test -s evidence/junit.xml
       - name: Upload qualification evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: amiga-runtime-m1-evidence
           path: |
             evidence/
+            runtime-evidence/
             aros-cache/manifest.txt
             aros-cache/archive.sha256
