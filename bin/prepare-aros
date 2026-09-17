@@ -70,7 +70,7 @@ test -n "$iso" || { echo 'AROS amiga-m68k ISO not found in upstream archive' >&2
 rm -rf "$DEST/iso-root"
 mkdir -p "$DEST/iso-root"
 cp "$iso" "$DEST/aros.iso"
-xorriso -osirrox on -indev "$DEST/aros.iso" -extract / "$DEST/iso-root" >/dev/null 2>&1
+# Match the AROS filesystem extraction path already qualified in AmiGuard CI.\n# 7z preserves the layout FS-UAE successfully boots as a directory volume.\n7z x -y -o"$DEST/iso-root" "$DEST/aros.iso" >/dev/null
 rom=$(find "$DEST/iso-root" -type f -iname 'aros-rom.bin' -print -quit)
 ext=$(find "$DEST/iso-root" -type f -iname 'aros-ext.bin' -print -quit)
 test -n "$rom" && test -n "$ext" || { echo 'AROS m68k ROM pair not found in upstream ISO' >&2; exit 66; }
