@@ -9,15 +9,26 @@ permissions:
   contents: read
 
 jobs:
-  m0:
+  runtime:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Repository checks
         run: make check
       - name: Build runtime image
-        run: docker build -t amiga-runtime:m0 .
+        run: docker build -t amiga-runtime:m1 .
       - name: Container self-test
-        run: docker run --rm amiga-runtime:m0 self-test
+        run: docker run --rm amiga-runtime:m1 self-test
       - name: Profile inventory
-        run: docker run --rm amiga-runtime:m0 profiles
+        run: docker run --rm amiga-runtime:m1 profiles
+      - name: Verify result writer
+        run: |
+          mkdir -p evidence
+          python3 lib/write-result.py PASS 0 a1200-020 smoke evidence
+          jq -e '.status == "PASS" and .runtime == "aros"' evidence/result.json
+          test -s evidence/junit.xml
+      - name: Upload harness evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: amiga-runtime-harness-evidence
+          path: evidence/
