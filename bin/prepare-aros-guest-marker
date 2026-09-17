@@ -1,0 +1,32 @@
+#!/bin/sh
+set -eu
+
+input=${1:?usage: prepare-aros-guest-marker INPUT_ISO OUTPUT_ISO}
+output=${2:?usage: prepare-aros-guest-marker INPUT_ISO OUTPUT_ISO}
+marker=${AMIGA_RUNTIME_BOOT_MARKER:-AMIGA_RUNTIME_BOOT_OK}
+
+test -s "$input" || { echo "missing input ISO: $input" >&2; exit 66; }
+command -v xorriso >/dev/null 2>&1 || { echo 'xorriso is required' >&2; exit 69; }
+
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT HUP INT TERM
+startup="$tmp/User-Startup"
+
+# Preserve the upstream startup hook when present, then append one guest-side
+# write to the FS-UAE directory volume named Evidence:. A marker appearing in
+# the host evidence directory therefore proves that DOS reached User-Startup;
+# emulator process lifetime alone can never create it.
+if xorriso -osirrox on -indev "$input" -extract /S/User-Startup "$startup" >/dev/null 2>&1; then
+    printf '\n' >> "$startup"
+else
+    : > "$startup"
+fi
+printf 'Echo "%s" >Evidence:%s\n' "$marker" "$marker" >> "$startup"
+
+rm -f "$output"
+xorriso -indev "$input" -outdev "$output" \
+    -update "$startup" /S/User-Startup \
+    -commit >/dev/null 2>&1
+
+test -s "$output"
+printf '%s  %s\n' "$(sha256sum "$output" | awk '{print $1}')" "$(basename "$output")"
