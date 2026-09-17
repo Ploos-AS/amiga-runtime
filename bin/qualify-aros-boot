@@ -1,0 +1,57 @@
+#!/bin/sh
+set -eu
+
+AROS=${AROS_RUNTIME_DIR:-/opt/amiga-runtime/aros}
+EVIDENCE=${AMIGA_RUNTIME_EVIDENCE:-/work/evidence}
+TIMEOUT=${AMIGA_RUNTIME_BOOT_TIMEOUT:-20}
+PROFILE=${1:-a1200-020}
+PROFILES=${AMIGA_RUNTIME_PROFILES:-/opt/amiga-runtime/profiles}
+
+mkdir -p "$EVIDENCE"
+for f in "$AROS/aros.iso" "$AROS/aros-rom.bin" "$AROS/aros-ext.bin"; do
+    test -s "$f" || { echo "missing prepared AROS artifact: $f" >&2; exit 69; }
+done
+test -f "$PROFILES/$PROFILE.conf" || { echo "unknown profile: $PROFILE" >&2; exit 66; }
+
+sha256sum "$AROS/aros.iso" "$AROS/aros-rom.bin" "$AROS/aros-ext.bin" > "$EVIDENCE/runtime.sha256"
+
+# AROS supplies a redistributable Amiga m68k ROM pair.  Feed those directly to
+# FS-UAE; no Commodore/Amiga proprietary Kickstart is used.  The boot ISO is
+# attached as CD media.  This M1 gate proves that the emulator can start the
+# pinned free runtime. Guest-level payload/marker proof is the M2/Q3 gate.
+set +e
+timeout "$TIMEOUT" fs-uae "$PROFILES/$PROFILE.conf" \
+    --kickstart-file="$AROS/aros-rom.bin" \
+    --kickstart-ext-file="$AROS/aros-ext.bin" \
+    --cdrom-drive-0="$AROS/aros.iso" \
+    --console-debugger=0 \
+    >"$EVIDENCE/fs-uae.stdout.log" 2>"$EVIDENCE/fs-uae.stderr.log"
+rc=$?
+set -e
+
+case "$rc" in
+    0|124) emulator_started=true ;;
+    *) emulator_started=false ;;
+esac
+
+python3 - "$EVIDENCE/result.json" "$rc" "$PROFILE" "$emulator_started" <<'PY'
+import json, pathlib, sys
+out, rc, profile, started = sys.argv[1:]
+data = {
+    "schema": 1,
+    "milestone": "M1",
+    "qualification_level": "Q2-foundation",
+    "runtime": "aros-m68k",
+    "emulator": "fs-uae",
+    "profile": profile,
+    "process_rc": int(rc),
+    "emulator_started": started == "true",
+    "guest_boot_proven": False,
+    "status": "PASS" if started == "true" else "FAIL",
+    "boundary": "M1 process/emulator start gate; guest boot markers require M2/Q3"
+}
+pathlib.Path(out).write_text(json.dumps(data, indent=2) + "\n")
+PY
+
+[ "$emulator_started" = true ]
+echo 'AROS FS-UAE emulator start gate: PASS (guest marker gate pending M2/Q3)'
