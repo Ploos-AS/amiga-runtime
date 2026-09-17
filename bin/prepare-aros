@@ -1,0 +1,26 @@
+#!/bin/sh
+set -eu
+
+DEST=${AROS_RUNTIME_DIR:-/opt/amiga-runtime/aros}
+OUT=$DEST/aros.adf
+mkdir -p "$DEST"
+
+if [ -n "${AROS_BOOT_IMAGE:-}" ]; then
+    test -f "$AROS_BOOT_IMAGE" || { echo "AROS_BOOT_IMAGE not found: $AROS_BOOT_IMAGE" >&2; exit 66; }
+    cp "$AROS_BOOT_IMAGE" "$OUT"
+elif [ -n "${AROS_BOOT_URL:-}" ]; then
+    test -n "${AROS_BOOT_SHA256:-}" || { echo 'AROS_BOOT_SHA256 is required with AROS_BOOT_URL' >&2; exit 64; }
+    curl -fsSL --retry 3 "$AROS_BOOT_URL" -o "$OUT.tmp"
+    printf '%s  %s\n' "$AROS_BOOT_SHA256" "$OUT.tmp" | sha256sum -c - >/dev/null
+    mv "$OUT.tmp" "$OUT"
+else
+    echo 'Set AROS_BOOT_IMAGE or AROS_BOOT_URL + AROS_BOOT_SHA256' >&2
+    exit 64
+fi
+
+if [ -n "${AROS_BOOT_SHA256:-}" ]; then
+    printf '%s  %s\n' "$AROS_BOOT_SHA256" "$OUT" | sha256sum -c - >/dev/null
+fi
+
+sha256sum "$OUT"
+echo "AROS runtime artifact ready: $OUT"
