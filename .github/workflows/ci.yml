@@ -22,16 +22,26 @@ jobs:
         run: docker run --rm amiga-runtime:m2 self-test
       - name: Profile inventory
         run: docker run --rm amiga-runtime:m2 profiles
+      - name: Cache pinned AROS m68k runtime
+        id: aros-cache
+        uses: actions/cache@v4
+        with:
+          path: aros-cache
+          key: amiga-runtime-aros-${{ runner.os }}-${{ hashFiles('runtime/aros/pinned.env', 'bin/prepare-aros') }}
       - name: Prepare pinned AROS m68k runtime
+        if: steps.aros-cache.outputs.cache-hit != 'true'
         run: |
           mkdir -p "$PWD/aros-cache"
           docker run --rm \
             -v "$PWD/aros-cache:/opt/amiga-runtime/aros" \
             amiga-runtime:m2 prepare-aros
+      - name: Verify pinned AROS m68k runtime
+        run: |
           test -s aros-cache/aros.iso
           test -s aros-cache/aros-rom.bin
           test -s aros-cache/aros-ext.bin
           test -d aros-cache/iso-root/S
+          test -s aros-cache/manifest.txt
           cat aros-cache/manifest.txt
       - name: Qualify AROS guest boot
         run: |
