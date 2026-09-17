@@ -9,39 +9,54 @@ mkdir -p "$DEST"
 # shellcheck disable=SC1090
 . "$PIN"
 
-: "${AROS_BUILD_DATE:?AROS_BUILD_DATE is required}"
-: "${AROS_ARCHIVE:?AROS_ARCHIVE is required}"
-: "${AROS_ARCHIVE_URL:?AROS_ARCHIVE_URL is required}"
-: "${AROS_MD5_URL:?AROS_MD5_URL is required}"
+: "${AROS_INDEX_URL:?AROS_INDEX_URL is required}"
 : "${AROS_TARGET:?AROS_TARGET is required}"
-test "$AROS_TARGET" = amiga-m68k || { echo "Unsupported AROS target: $AROS_TARGET" >&2; exit 64; }
-case "$AROS_ARCHIVE" in
-  *amiga-m68k*) ;;
-  *) echo "Refusing non-amiga-m68k AROS artifact: $AROS_ARCHIVE" >&2; exit 64 ;;
-esac
+test "$AROS_TARGET" = amiga-m68k-boot-iso || {
+    echo "Unsupported AROS target: $AROS_TARGET" >&2
+    exit 64
+}
 
 rm -rf "$WORK"
 mkdir -p "$WORK"
-archive="$WORK/$AROS_ARCHIVE"
-sidecar="$WORK/$AROS_ARCHIVE.md5"
+index="$WORK/aros-nightly-index.html"
 
-curl --fail --location --retry 4 --retry-delay 2 --output "$archive" "$AROS_ARCHIVE_URL"
-curl --fail --location --retry 4 --retry-delay 2 --output "$sidecar" "$AROS_MD5_URL"
+# Resolve through the official AROS nightly index. SourceForge nightly folders
+# are rolling, so previously valid dated paths can disappear.
+curl --fail --location --retry 4 --retry-delay 2 "$AROS_INDEX_URL" -o "$index"
+url=$({ grep -oE 'href="[^"]*amiga-m68k-boot-iso[^"]*"' "$index" || true; } |
+    head -n1 | sed -e 's/^href="//' -e 's/"$//' -e 's/&amp;/\&/g')
+test -n "$url" || {
+    echo "Could not resolve AROS amiga-m68k nightly from official index" >&2
+    exit 65
+}
+case "$url" in
+    http://*|https://*) ;;
+    //*) url="https:$url" ;;
+    /*) url="https://aros.sourceforge.io$url" ;;
+    *) url="https://aros.sourceforge.io/$url" ;;
+esac
 
-expected_md5=$(awk 'NF { for (i=1; i<=NF; i++) if ($i ~ /^[0-9A-Fa-f]{32}$/) { print tolower($i); exit } }' "$sidecar")
-test -n "$expected_md5" || { echo 'Could not parse upstream AROS MD5 sidecar' >&2; exit 65; }
-actual_md5=$(md5sum "$archive" | awk '{print $1}')
-test "$actual_md5" = "$expected_md5" || { echo "AROS archive MD5 mismatch: expected $expected_md5 got $actual_md5" >&2; exit 65; }
+path=${url%%\?*}
+case "$path" in
+    */download) archive_name=$(basename "$(dirname "$path")") ;;
+    *) archive_name=$(basename "$path") ;;
+esac
+case "$archive_name" in
+    *amiga-m68k-boot-iso*) ;;
+    *) echo "Refusing unexpected AROS artifact: $archive_name" >&2; exit 64 ;;
+esac
+
+archive="$WORK/$archive_name"
+curl --fail --location --retry 4 --retry-delay 2 --output "$archive" "$url"
 archive_sha256=$(sha256sum "$archive" | awk '{print $1}')
 
 type=$(file -b "$archive")
-case "$type" in
-  *Zip*) ;;
-  *) echo "Unexpected AROS archive type: $type" >&2; exit 66 ;;
-esac
-
 mkdir -p "$WORK/unpacked"
-unzip -q "$archive" -d "$WORK/unpacked"
+case "$archive_name" in
+    *.zip|*.ZIP) unzip -q "$archive" -d "$WORK/unpacked" ;;
+    *.lha|*.LHA) lha xw="$WORK/unpacked" "$archive" >/dev/null ;;
+    *) echo "Unsupported AROS archive format: $archive_name ($type)" >&2; exit 66 ;;
+esac
 iso=$(find "$WORK/unpacked" -type f -iname '*.iso' -print -quit)
 test -n "$iso" || { echo 'AROS amiga-m68k ISO not found in upstream archive' >&2; exit 66; }
 
@@ -58,18 +73,17 @@ cp "$ext" "$DEST/aros-ext.bin"
 iso_sha256=$(sha256sum "$DEST/aros.iso" | awk '{print $1}')
 rom_sha256=$(sha256sum "$DEST/aros-rom.bin" | awk '{print $1}')
 ext_sha256=$(sha256sum "$DEST/aros-ext.bin" | awk '{print $1}')
-printf '%s  %s\n' "$archive_sha256" "$AROS_ARCHIVE" > "$DEST/archive.sha256"
+printf '%s  %s\n' "$archive_sha256" "$archive_name" > "$DEST/archive.sha256"
 {
-    echo 'acquisition=upstream-prebuilt'
-    echo "build_date=$AROS_BUILD_DATE"
-    echo "target=$AROS_TARGET"
-    echo "archive=$AROS_ARCHIVE"
-    echo "archive_url=$AROS_ARCHIVE_URL"
-    echo "upstream_md5=$actual_md5"
+    echo 'acquisition=official-nightly-index'
+    echo 'target=amiga-m68k'
+    echo "index_url=$AROS_INDEX_URL"
+    echo "archive=$archive_name"
+    echo "archive_url=$url"
     echo "archive_sha256=$archive_sha256"
     echo "iso_sha256=$iso_sha256"
     echo "rom_sha256=$rom_sha256"
     echo "ext_sha256=$ext_sha256"
 } > "$DEST/manifest.txt"
 cat "$DEST/manifest.txt"
-echo 'Pinned prebuilt AROS m68k runtime prepared: PASS'
+echo 'AROS m68k runtime prepared: PASS'
