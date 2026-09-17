@@ -11,6 +11,7 @@ RUN apt-get update \
        jq \
        python3 \
        unzip \
+       xauth \
        xorriso \
        xvfb \
     && rm -rf /var/lib/apt/lists/*
