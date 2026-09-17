@@ -3,10 +3,11 @@
 import pathlib
 import sys
 
-if len(sys.argv) != 6:
-    raise SystemExit("usage: generate-fs-uae-config.py PROFILE ROM EXT ISO OUTPUT")
+if len(sys.argv) not in (6, 7):
+    raise SystemExit("usage: generate-fs-uae-config.py PROFILE ROM EXT ISO OUTPUT [EVIDENCE_DIR]")
 
-profile_path, rom, ext, iso, output = map(pathlib.Path, sys.argv[1:])
+profile_path, rom, ext, iso, output = map(pathlib.Path, sys.argv[1:6])
+evidence = pathlib.Path(sys.argv[6]) if len(sys.argv) == 7 else None
 values = {}
 for raw in profile_path.read_text().splitlines():
     line = raw.strip()
@@ -46,5 +47,12 @@ lines = [
     f"cdrom_drive_0 = {iso}",
     "console_debugger = 0",
 ]
+if evidence is not None:
+    lines.extend([
+        f"hard_drive_0 = {evidence}",
+        "hard_drive_0_label = Evidence",
+        "hard_drive_0_read_only = 0",
+        "hard_drive_0_priority = -10",
+    ])
 output.parent.mkdir(parents=True, exist_ok=True)
 output.write_text("\n".join(lines) + "\n")
