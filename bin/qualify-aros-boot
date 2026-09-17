@@ -34,7 +34,7 @@ if [ -f "$startup" ]; then
 else
     : > "$startup"
 fi
-printf 'Echo "%s" >Evidence:%s\n' "$MARKER" "$MARKER" >> "$startup"
+printf 'Echo "%s" >DH1:%s\n' "$MARKER" "$MARKER" >> "$startup"
 printf '%s\n' "$MARKER" > "$EVIDENCE/expected-marker.txt"
 
 config="$EVIDENCE/fs-uae.conf"
@@ -78,7 +78,7 @@ data = {
     "emulator_started": started == "true",
     "guest_boot_proven": guest == "true",
     "status": "PASS" if passed else "FAIL",
-    "proof": "guest User-Startup marker from extracted AROS system volume",
+    "proof": "guest User-Startup marker written to second FS-UAE directory volume",
 }
 pathlib.Path(out).write_text(json.dumps(data, indent=2) + "\n")
 PY
