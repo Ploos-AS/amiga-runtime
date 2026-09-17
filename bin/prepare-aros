@@ -71,8 +71,14 @@ rm -rf "$DEST/iso-root"
 mkdir -p "$DEST/iso-root"
 cp "$iso" "$DEST/aros.iso"
 # Match the AROS filesystem extraction path already qualified in AmiGuard CI.\n# 7z preserves the layout FS-UAE successfully boots as a directory volume.\n7z x -y -o"$DEST/iso-root" "$DEST/aros.iso" >/dev/null
-rom=$(find "$DEST/iso-root" -type f -iname 'aros-rom.bin' -print -quit)
-ext=$(find "$DEST/iso-root" -type f -iname 'aros-ext.bin' -print -quit)
+# 7z is the proven extraction path for the bootable directory volume, but it
+# does not expose the ISO's Amiga-specific ROM entries the same way xorriso
+# does. Extract only the ROM pair through xorriso into a temporary tree.
+romtree="$WORK/rom-root"
+mkdir -p "$romtree"
+xorriso -osirrox on -indev "$DEST/aros.iso" -extract / "$romtree" >/dev/null 2>&1
+rom=$(find "$romtree" -type f -iname 'aros-rom.bin' -print -quit)
+ext=$(find "$romtree" -type f -iname 'aros-ext.bin' -print -quit)
 test -n "$rom" && test -n "$ext" || { echo 'AROS m68k ROM pair not found in upstream ISO' >&2; exit 66; }
 cp "$rom" "$DEST/aros-rom.bin"
 cp "$ext" "$DEST/aros-ext.bin"
