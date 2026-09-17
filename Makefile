@@ -10,6 +10,7 @@ check:
 	test -f profiles/a500.conf
 	test -f profiles/a500plus.conf
 	test -f profiles/a1200-020.conf
+	test -f profiles/a1200-020-aros.conf
 	test -f profiles/a1200-030.conf
 	test -f profiles/a4000.conf
 	@# Reject committed proprietary media files, not legitimate FS-UAE option names.
@@ -17,4 +18,4 @@ check:
 	@echo 'M2 repository checks: PASS'
 
 container-build:
-	docker build -t amiga-runtime:m1 .
+	docker build -t amiga-runtime:m2 .
