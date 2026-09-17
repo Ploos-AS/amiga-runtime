@@ -9,6 +9,7 @@ usage:
   amiga-runtime self-test
   amiga-runtime profiles
   amiga-runtime prepare-aros
+  amiga-runtime qualify-aros-boot [PROFILE]
   amiga-runtime test PROGRAM [--runtime aros] [--profile PROFILE]
 EOF
 }
@@ -20,6 +21,7 @@ case "${1:-}" in
         command -v timeout >/dev/null
         command -v prepare-aros >/dev/null
         command -v run-aros >/dev/null
+        command -v qualify-aros-boot >/dev/null
         test -d "$PROFILES"
         test -f /opt/amiga-runtime/lib/write-result.py
         echo 'amiga-runtime M1 harness self-test: PASS'
@@ -29,6 +31,10 @@ case "${1:-}" in
         ;;
     prepare-aros)
         exec prepare-aros
+        ;;
+    qualify-aros-boot)
+        shift
+        exec qualify-aros-boot "${1:-a1200-020}"
         ;;
     test)
         shift
