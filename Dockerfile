@@ -20,6 +20,7 @@ RUN apt-get update \
        libmpc-dev \
        libmpfr-dev \
        libncurses-dev \
+       libpng-dev \
        netpbm \
        python3 \
        python3-mako \
