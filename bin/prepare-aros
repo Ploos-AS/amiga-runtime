@@ -3,67 +3,47 @@ set -eu
 
 DEST=${AROS_RUNTIME_DIR:-/opt/amiga-runtime/aros}
 PIN=${AROS_PIN_FILE:-/opt/amiga-runtime/runtime/aros/pinned.env}
-WORK=${AROS_BUILD_WORKDIR:-/tmp/amiga-runtime-aros-build}
-JOBS=${AROS_BUILD_JOBS:-2}
+WORK=${AROS_PREPARE_WORKDIR:-/tmp/amiga-runtime-aros}
 mkdir -p "$DEST"
 
 # shellcheck disable=SC1090
 . "$PIN"
 
-: "${AROS_SOURCE_REPOSITORY:?AROS_SOURCE_REPOSITORY is required}"
-: "${AROS_SOURCE_COMMIT:?AROS_SOURCE_COMMIT is required}"
-: "${AROS_SOURCE_TARGET:?AROS_SOURCE_TARGET is required}"
-test "$AROS_SOURCE_TARGET" = amiga-m68k || { echo "Unsupported AROS source target: $AROS_SOURCE_TARGET" >&2; exit 64; }
+: "${AROS_BUILD_DATE:?AROS_BUILD_DATE is required}"
+: "${AROS_ARCHIVE:?AROS_ARCHIVE is required}"
+: "${AROS_ARCHIVE_URL:?AROS_ARCHIVE_URL is required}"
+: "${AROS_MD5_URL:?AROS_MD5_URL is required}"
+: "${AROS_TARGET:?AROS_TARGET is required}"
+test "$AROS_TARGET" = amiga-m68k || { echo "Unsupported AROS target: $AROS_TARGET" >&2; exit 64; }
+case "$AROS_ARCHIVE" in
+  *amiga-m68k*) ;;
+  *) echo "Refusing non-amiga-m68k AROS artifact: $AROS_ARCHIVE" >&2; exit 64 ;;
+esac
 
 rm -rf "$WORK"
 mkdir -p "$WORK"
-git clone --filter=blob:none --no-checkout "$AROS_SOURCE_REPOSITORY" "$WORK/src"
-git -C "$WORK/src" checkout --detach "$AROS_SOURCE_COMMIT"
-test "$(git -C "$WORK/src" rev-parse HEAD)" = "$AROS_SOURCE_COMMIT" || { echo 'AROS source pin mismatch' >&2; exit 65; }
-git -C "$WORK/src" submodule update --init --recursive
+archive="$WORK/$AROS_ARCHIVE"
+sidecar="$WORK/$AROS_ARCHIVE.md5"
 
-# The pinned upstream revision currently overfills its 880 KiB Emergency-Boot
-# floppy by a few KiB. The runtime bootstrap only needs the commands referenced
-# by Startup-Sequence.boot. Drop unrelated convenience commands from the
-# emergency floppy payload; they remain present on the generated Live CD.
-boot_mmake="$WORK/src/arch/m68k-amiga/boot/floppy/mmakefile.src"
-for command in Copy Date Dir Eval Filenote IconX Install Join List Protect Relabel Rename Shutdown Touch Type Version Wait Which; do
-    sed -i "/^[[:space:]]*C\/$command \\\\$/d" "$boot_mmake"
-done
+curl --fail --location --retry 4 --retry-delay 2 --output "$archive" "$AROS_ARCHIVE_URL"
+curl --fail --location --retry 4 --retry-delay 2 --output "$sidecar" "$AROS_MD5_URL"
 
-# Build the cross toolchain as a distinct stage. Upstream's staged builders do
-# this deliberately: configuring a complete amiga-m68k build without a separate
-# toolchain prefix can make generated crosstool directories collide with the
-# symlinks (m68k-aros-ar, ranlib, strip, ...) that CMake creates later.
-TOOLCHAIN="$WORK/toolchain"
-BUILD="$WORK/build"
-mkdir -p "$TOOLCHAIN" "$BUILD"
-cd "$BUILD"
-"$WORK/src/configure" \
-    --target=amiga-m68k \
-    --with-serial-debug=yes \
-    --with-aros-toolchain-install="$TOOLCHAIN"
-make -j"$JOBS" crosstools
+expected_md5=$(awk 'NF { for (i=1; i<=NF; i++) if ($i ~ /^[0-9A-Fa-f]{32}$/) { print tolower($i); exit } }' "$sidecar")
+test -n "$expected_md5" || { echo 'Could not parse upstream AROS MD5 sidecar' >&2; exit 65; }
+actual_md5=$(md5sum "$archive" | awk '{print $1}')
+test "$actual_md5" = "$expected_md5" || { echo "AROS archive MD5 mismatch: expected $expected_md5 got $actual_md5" >&2; exit 65; }
+archive_sha256=$(sha256sum "$archive" | awk '{print $1}')
 
-# Reconfigure from a clean build tree and consume the toolchain produced above.
-# This mirrors the supported upstream staged-build flow and avoids stale build
-# objects or directory/symlink type collisions from the bootstrap stage.
-rm -rf "$BUILD"
-mkdir -p "$BUILD"
-cd "$BUILD"
-"$WORK/src/configure" \
-    --target=amiga-m68k \
-    --with-serial-debug=yes \
-    --with-aros-toolchain-install="$TOOLCHAIN" \
-    --with-aros-toolchain=yes
-make -j"$JOBS"
-make -j"$JOBS" distfiles
+type=$(file -b "$archive")
+case "$type" in
+  *Zip*) ;;
+  *) echo "Unexpected AROS archive type: $type" >&2; exit 66 ;;
+esac
 
-# The official amiga-m68k build emits redistributable media under distfiles.
-dist="$WORK/build/distfiles"
-test -d "$dist" || { echo 'AROS amiga-m68k distfiles directory not produced' >&2; exit 66; }
-iso=$(find "$dist" -type f -iname '*.iso' -print -quit)
-test -n "$iso" || { echo 'AROS amiga-m68k ISO not produced' >&2; exit 66; }
+mkdir -p "$WORK/unpacked"
+unzip -q "$archive" -d "$WORK/unpacked"
+iso=$(find "$WORK/unpacked" -type f -iname '*.iso' -print -quit)
+test -n "$iso" || { echo 'AROS amiga-m68k ISO not found in upstream archive' >&2; exit 66; }
 
 rm -rf "$DEST/iso-root"
 mkdir -p "$DEST/iso-root"
@@ -71,26 +51,25 @@ cp "$iso" "$DEST/aros.iso"
 xorriso -osirrox on -indev "$DEST/aros.iso" -extract / "$DEST/iso-root" >/dev/null 2>&1
 rom=$(find "$DEST/iso-root" -type f -iname 'aros-rom.bin' -print -quit)
 ext=$(find "$DEST/iso-root" -type f -iname 'aros-ext.bin' -print -quit)
-test -n "$rom" && test -n "$ext" || { echo 'AROS m68k ROM pair not found in built ISO' >&2; exit 66; }
+test -n "$rom" && test -n "$ext" || { echo 'AROS m68k ROM pair not found in upstream ISO' >&2; exit 66; }
 cp "$rom" "$DEST/aros-rom.bin"
 cp "$ext" "$DEST/aros-ext.bin"
 
 iso_sha256=$(sha256sum "$DEST/aros.iso" | awk '{print $1}')
 rom_sha256=$(sha256sum "$DEST/aros-rom.bin" | awk '{print $1}')
 ext_sha256=$(sha256sum "$DEST/aros-ext.bin" | awk '{print $1}')
-printf '%s  %s\n' "$iso_sha256" aros.iso > "$DEST/archive.sha256"
+printf '%s  %s\n' "$archive_sha256" "$AROS_ARCHIVE" > "$DEST/archive.sha256"
 {
-    echo 'acquisition=source-build'
-    echo "source_repository=$AROS_SOURCE_REPOSITORY"
-    echo "source_commit=$AROS_SOURCE_COMMIT"
-    echo "source_target=$AROS_SOURCE_TARGET"
-    echo 'source_adjustment=trim-unused-emergency-boot-commands'
-    echo 'build_mode=staged-toolchain'
-    echo "toolchain_prefix=$TOOLCHAIN"
-    echo 'configure=--target=amiga-m68k --with-serial-debug=yes --with-aros-toolchain-install=<prefix> --with-aros-toolchain=yes'
+    echo 'acquisition=upstream-prebuilt'
+    echo "build_date=$AROS_BUILD_DATE"
+    echo "target=$AROS_TARGET"
+    echo "archive=$AROS_ARCHIVE"
+    echo "archive_url=$AROS_ARCHIVE_URL"
+    echo "upstream_md5=$actual_md5"
+    echo "archive_sha256=$archive_sha256"
     echo "iso_sha256=$iso_sha256"
     echo "rom_sha256=$rom_sha256"
     echo "ext_sha256=$ext_sha256"
 } > "$DEST/manifest.txt"
 cat "$DEST/manifest.txt"
-echo 'AROS m68k runtime prepared from pinned source: PASS'
+echo 'Pinned prebuilt AROS m68k runtime prepared: PASS'
