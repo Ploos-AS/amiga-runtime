@@ -7,46 +7,46 @@ mkdir -p "$DEST"
 
 # shellcheck disable=SC1090
 . "$PIN"
-archive="$DEST/$AROS_ARCHIVE"
-md5file="$archive.md5"
 
-# SourceForge's mirror/download routing changes over time. Keep the pinned
-# build identity in pinned.env, but try canonical routes instead of depending
-# on one hard-coded mirror hostname/path.
-download() {
-    output=$1
-    shift
-    for url in "$@"; do
-        echo "Trying $url" >&2
-        if curl -fL --retry 3 --retry-all-errors --connect-timeout 20 \
-            -A 'amiga-runtime/1.0 (+https://github.com/Ploos-AS/amiga-runtime)' \
-            "$url" -o "$output.tmp"; then
-            mv "$output.tmp" "$output"
-            return 0
-        fi
-        rm -f "$output.tmp"
-    done
-    return 1
+# SourceForge publishes only some targets on a given nightly. Discover the
+# actual amiga-m68k boot ISO filename from the pinned build's Binaries listing
+# instead of assuming a constructed URL is present.
+sf_dir="https://sourceforge.net/projects/aros/files/nightly2/$AROS_BUILD_DATE/Binaries/"
+listing="$DEST/sourceforge-binaries.html"
+
+echo "Discovering AROS amiga-m68k boot ISO in $sf_dir" >&2
+curl -fL --retry 3 --retry-all-errors --connect-timeout 20 \
+    -A 'amiga-runtime/1.0 (+https://github.com/Ploos-AS/amiga-runtime)' \
+    "$sf_dir" -o "$listing"
+
+discovered=$(grep -Eo "AROS-${AROS_BUILD_DATE}-amiga-m68k-boot-iso\.zip" "$listing" | head -n1 || true)
+test -n "$discovered" || {
+    echo "Pinned AROS build $AROS_BUILD_DATE does not publish amiga-m68k-boot-iso" >&2
+    exit 64
 }
 
-sf_base="https://sourceforge.net/projects/aros/files/nightly2/$AROS_BUILD_DATE/Binaries"
-mirror_base="https://downloads.sourceforge.net/project/aros/nightly2/$AROS_BUILD_DATE/Binaries"
+if [ -n "${AROS_ARCHIVE:-}" ] && [ "$AROS_ARCHIVE" != "$discovered" ]; then
+    echo "Pinned archive name differs from SourceForge listing: $AROS_ARCHIVE != $discovered" >&2
+    exit 64
+fi
+AROS_ARCHIVE=$discovered
+archive="$DEST/$AROS_ARCHIVE"
+md5file="$archive.md5"
+archive_url="$sf_dir$AROS_ARCHIVE/download"
+md5_url="$sf_dir$AROS_ARCHIVE.md5/download"
 
-download "$archive" \
-    "$AROS_URL" \
-    "$sf_base/$AROS_ARCHIVE?download=1" \
-    "$mirror_base/$AROS_ARCHIVE" || {
-        echo "Unable to download pinned AROS archive: $AROS_ARCHIVE" >&2
-        exit 64
-    }
+download() {
+    output=$1
+    url=$2
+    echo "Downloading $url" >&2
+    curl -fL --retry 3 --retry-all-errors --connect-timeout 20 \
+        -A 'amiga-runtime/1.0 (+https://github.com/Ploos-AS/amiga-runtime)' \
+        "$url" -o "$output.tmp"
+    mv "$output.tmp" "$output"
+}
 
-download "$md5file" \
-    "$AROS_MD5_URL" \
-    "$sf_base/$AROS_ARCHIVE.md5?download=1" \
-    "$mirror_base/$AROS_ARCHIVE.md5" || {
-        echo "Unable to download checksum for pinned AROS archive" >&2
-        exit 64
-    }
+download "$archive" "$archive_url"
+download "$md5file" "$md5_url"
 
 expected=$(awk '{print $1}' "$md5file" | head -n1)
 actual=$(md5sum "$archive" | awk '{print $1}')
@@ -58,7 +58,15 @@ test "$actual" = "$expected" || {
     echo "AROS upstream checksum mismatch" >&2
     exit 65
 }
-sha256sum "$archive" | tee "$DEST/archive.sha256"
+
+actual_sha256=$(sha256sum "$archive" | awk '{print $1}')
+if [ -n "${AROS_SHA256:-}" ]; then
+    test "$actual_sha256" = "$AROS_SHA256" || {
+        echo "AROS pinned SHA-256 mismatch" >&2
+        exit 65
+    }
+fi
+printf '%s  %s\n' "$actual_sha256" "$AROS_ARCHIVE" | tee "$DEST/archive.sha256"
 
 rm -rf "$DEST/unpacked" "$DEST/iso-root"
 mkdir -p "$DEST/unpacked" "$DEST/iso-root"
@@ -77,8 +85,9 @@ cp "$ext" "$DEST/aros-ext.bin"
 {
   echo "build_date=$AROS_BUILD_DATE"
   echo "archive=$AROS_ARCHIVE"
+  echo "source_url=$archive_url"
   echo "md5=$actual"
-  echo "sha256=$(sha256sum "$archive" | awk '{print $1}')"
+  echo "sha256=$actual_sha256"
   echo "rom_sha256=$(sha256sum "$DEST/aros-rom.bin" | awk '{print $1}')"
   echo "ext_sha256=$(sha256sum "$DEST/aros-ext.bin" | awk '{print $1}')"
 } > "$DEST/manifest.txt"
