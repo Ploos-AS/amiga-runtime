@@ -20,10 +20,18 @@ sha256sum "$AROS/aros.iso" "$AROS/aros-rom.bin" "$AROS/aros-ext.bin" > "$EVIDENC
 config="$EVIDENCE/fs-uae.conf"
 python3 "$GENERATOR" "$profile" "$AROS/aros-rom.bin" "$AROS/aros-ext.bin" "$AROS/aros.iso" "$config"
 
-# M1 currently proves only emulator/process startup. It deliberately does not
-# call this a guest boot PASS; deterministic guest markers are the next gate.
+# FS-UAE needs a real X display/OpenGL context even for the CI startup gate.
+# xvfb-run supplies the virtual display; Mesa software rendering keeps this
+# independent of host GPU access. A timeout means the emulator stayed alive
+# for the complete gate window, but is NOT guest-boot proof.
 set +e
-timeout "$TIMEOUT" fs-uae "$config" \
+XDG_RUNTIME_DIR=/tmp/amiga-runtime-xdg
+mkdir -p "$XDG_RUNTIME_DIR"
+chmod 0700 "$XDG_RUNTIME_DIR"
+export XDG_RUNTIME_DIR
+export LIBGL_ALWAYS_SOFTWARE=1
+timeout "$TIMEOUT" xvfb-run -a -s '-screen 0 1024x768x24 +extension GLX' \
+    fs-uae "$config" \
     >"$EVIDENCE/fs-uae.stdout.log" 2>"$EVIDENCE/fs-uae.stderr.log"
 rc=$?
 set -e
