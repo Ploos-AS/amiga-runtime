@@ -4,13 +4,24 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
+       autoconf \
+       automake \
+       bison \
+       build-essential \
        ca-certificates \
        coreutils \
        curl \
+       flex \
        fs-uae \
+       git \
        jq \
        libarchive-tools \
+       libgmp-dev \
+       libmpc-dev \
+       libmpfr-dev \
+       libncurses-dev \
        python3 \
+       texinfo \
        unzip \
        xauth \
        xorriso \
