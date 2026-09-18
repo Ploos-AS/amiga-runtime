@@ -7,6 +7,7 @@ check:
 	sh -n bin/run-aros
 	sh -n bin/qualify-aros-boot
 	sh -n backends/fs-uae/backend
+	sh -n backends/amiberry/backend
 	sh -n backends/fs-uae/qualify-aros-boot
 	sh -n backends/fs-uae/run-aros
 	python3 -m py_compile lib/write-result.py lib/generate-fs-uae-config.py
