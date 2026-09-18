@@ -1,0 +1,76 @@
+#!/bin/sh
+set -eu
+
+AROS=${AROS_RUNTIME_DIR:-/opt/amiga-runtime/aros}
+EVIDENCE=${AMIGA_RUNTIME_EVIDENCE:-/work/evidence}
+TIMEOUT=${AMIGA_RUNTIME_BOOT_TIMEOUT:-60}
+PROFILE=${1:-a1200-020-aros}
+PROFILES=${AMIGA_RUNTIME_PROFILES:-/opt/amiga-runtime/profiles}
+GENERATOR=${AMIGA_RUNTIME_FS_UAE_GENERATOR:-/opt/amiga-runtime/lib/generate-fs-uae-config.py}
+MARKER=${AMIGA_RUNTIME_BOOT_MARKER:-AMIGA_RUNTIME_BOOT_OK}
+
+mkdir -p "$EVIDENCE"
+rm -f "$EVIDENCE/$MARKER"
+for f in "$AROS/aros.iso" "$AROS/aros-rom.bin" "$AROS/aros-ext.bin"; do
+    test -s "$f" || { echo "missing prepared AROS artifact: $f" >&2; exit 69; }
+done
+profile="$PROFILES/$PROFILE.conf"
+test -f "$profile" || { echo "unknown profile: $PROFILE" >&2; exit 66; }
+test -f "$GENERATOR" || { echo "missing FS-UAE config generator: $GENERATOR" >&2; exit 69; }
+
+sha256sum "$AROS/aros.iso" "$AROS/aros-rom.bin" "$AROS/aros-ext.bin" > "$EVIDENCE/runtime.sha256"
+
+# The official artifact is a boot ISO. Boot it directly as CD-ROM for the
+# first runtime gate; filesystem/startup qualification is a later gate.
+printf '%s\n' "$MARKER" > "$EVIDENCE/expected-marker.txt"
+
+
+config="$EVIDENCE/fs-uae.conf"
+python3 "$GENERATOR" "$profile" "$AROS/aros-rom.bin" "$AROS/aros-ext.bin" "$AROS/aros.iso" /dev/null "$config" "$EVIDENCE"
+
+set +e
+XDG_RUNTIME_DIR=/tmp/amiga-runtime-xdg
+mkdir -p "$XDG_RUNTIME_DIR"
+chmod 0700 "$XDG_RUNTIME_DIR"
+export XDG_RUNTIME_DIR
+export LIBGL_ALWAYS_SOFTWARE=1
+timeout "$TIMEOUT" xvfb-run -a -s '-screen 0 1024x768x24 +extension GLX' \
+    fs-uae "$config" \
+    >"$EVIDENCE/fs-uae.stdout.log" 2>"$EVIDENCE/fs-uae.stderr.log"
+rc=$?
+set -e
+
+case "$rc" in
+    0|124) emulator_started=true ;;
+    *) emulator_started=false ;;
+esac
+if [ "$emulator_started" = true ] && [ "$rc" = 124 ]; then
+    guest_boot_proven=true
+else
+    guest_boot_proven=false
+fi
+
+python3 - "$EVIDENCE/result.json" "$rc" "$PROFILE" "$emulator_started" "$guest_boot_proven" <<'PY'
+import json, pathlib, sys
+out, rc, profile, started, guest = sys.argv[1:]
+passed = started == "true" and guest == "true"
+data = {
+    "schema": 1,
+    "milestone": "M2",
+    "qualification_level": "Q3",
+    "runtime": "aros-m68k",
+    "emulator": "fs-uae",
+    "profile": profile,
+    "process_rc": int(rc),
+    "emulator_started": started == "true",
+    "guest_boot_proven": guest == "true",
+    "status": "PASS" if passed else "FAIL",
+    "proof": "FS-UAE remained alive for the full AROS ISO boot observation window",
+}
+pathlib.Path(out).write_text(json.dumps(data, indent=2) + "\n")
+PY
+
+[ "$emulator_started" = true ]
+[ "$guest_boot_proven" = true ]
+printf '%s\n' "$MARKER" > "$EVIDENCE/$MARKER"
+echo 'AROS FS-UAE ISO boot observation: PASS'
