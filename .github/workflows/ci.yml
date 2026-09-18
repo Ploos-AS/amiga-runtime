@@ -73,8 +73,9 @@ jobs:
             amiga-runtime:m2 qualify-aros-arexx
           rc=$?
           set -e
-          test "$rc" -eq 78
-          jq -e '.status == "PENDING" and .gate == "arexx" and .guest_arch == "m68k"' runtime-evidence/arexx-result.json
+          test "$rc" -eq 0
+          jq -e '.status == "READY" and .gate == "arexx" and .guest_arch == "m68k"' runtime-evidence/arexx-result.json
+          test -s runtime-evidence/arexx-injection.txt
       - name: Verify result writer
         run: |
           mkdir -p evidence
@@ -95,3 +96,4 @@ jobs:
             aros-cache/startup-sequence-path.txt
             aros-cache/xorriso-root-inventory.txt
             aros-cache/xorriso-startup-sequence-path.txt
+            aros-cache/system-startup-sequence-path.txt
