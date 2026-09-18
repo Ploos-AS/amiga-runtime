@@ -44,6 +44,8 @@
 
 ## M4 — Multi-emulator qualification matrix
 
+**Backend policy:** `amiga-runtime` must support multiple independent Amiga emulators. FS-UAE remains the reference backend; Amiberry and FellowNG are first-class backend targets. A backend may be marked `experimental` until it provides deterministic automated execution, but it must use the same runtime/profile/evidence contract.
+
 - [ ] Define emulator-neutral backend contract
 - [ ] Keep FS-UAE as the first/reference backend
 - [ ] Add Amiberry backend
@@ -54,7 +56,9 @@
 - [ ] Never substitute AROS/i386 qualification for an Amiga/m68k emulator qualification
 - [ ] Classify differing results as `EMULATOR_DIVERGENCE`
 - [ ] Preserve per-emulator logs, screenshots, serial output, ARexx output, JSON and JUnit evidence
-- [ ] Add FellowNG backend when FellowNG supports deterministic automated qualification
+- [ ] Add FellowNG backend adapter and integration tests
+- [ ] Build/use FellowNG portable CLI path when FellowNG supports deterministic automated qualification
+- [ ] Keep FellowNG backend explicitly `experimental` until deterministic automated qualification is available
 - [ ] Keep FellowNG experimental until its regression suite is sufficiently mature
 - [ ] Feed reproducible FS-UAE/Amiberry/FellowNG divergences into FellowNG regression tests
 - [ ] A500 / 68000
