@@ -11,6 +11,8 @@ Initial scope:
 - Linux container image suitable for CI runners
 - AROS as the redistributable runtime baseline
 - FS-UAE integration point for emulated execution
+- Emulator-neutral backend contract with FS-UAE, Amiberry, and FellowNG targets
+- FellowNG integration path for deterministic CLI/CI qualification as its portable runtime matures
 - standard runtime profiles
 - smoke-test harness
 - machine-readable evidence/results layout
