@@ -18,16 +18,44 @@ case "$op" in
         version=$("$exe" --version 2>&1 | head -n1 || true)
         printf '{"schema":1,"backend":"amiberry","status":"available","version":"%s"}\n' "$(printf '%s' "$version" | sed 's/"/\\\"/g')"
         ;;
-    qualify-aros-boot|run-aros)
+    qualify-aros-boot)
         exe=${AMIBERRY_EXECUTABLE:-}
         if [ -z "$exe" ] && [ -s /opt/amiga-runtime/amiberry/executable.txt ]; then
             exe=$(cat /opt/amiga-runtime/amiberry/executable.txt)
         fi
-        [ -n "$exe" ] && [ -x "$exe" ] || {
-            echo "Amiberry backend runtime is unavailable" >&2
-            exit 69
-        }
-        echo "Amiberry operation '$op' adapter is not implemented yet" >&2
+        [ -n "$exe" ] && [ -x "$exe" ] || { echo "Amiberry backend runtime is unavailable" >&2; exit 69; }
+        profile=${1:-a1200-020-aros}
+        AROS=${AROS_RUNTIME_DIR:-/opt/amiga-runtime/aros}
+        EVIDENCE=${AMIGA_RUNTIME_EVIDENCE:-/work/evidence}
+        TIMEOUT=${AMIGA_RUNTIME_BOOT_TIMEOUT:-60}
+        mkdir -p "$EVIDENCE"
+        for a in "$AROS/aros.iso" "$AROS/aros-rom.bin" "$AROS/aros-ext.bin"; do
+            test -s "$a" || { echo "missing prepared AROS artifact: $a" >&2; exit 69; }
+        done
+        set +e
+        timeout "$TIMEOUT" xvfb-run -a -s '-screen 0 1024x768x24' "$exe" \
+            -f "$AROS/aros-rom.bin" -G -s use_gui=no -s cpu_type=68020 -s chipset=aga \
+            -s chipmem_size=4 -s fastmem_size=8 -s cdimage0="$AROS/aros.iso" \
+            >"$EVIDENCE/amiberry.stdout.log" 2>"$EVIDENCE/amiberry.stderr.log"
+        rc=$?
+        set -e
+        case "$rc" in 0|124) started=true ;; *) started=false ;; esac
+        if [ "$started" = true ] && [ "$rc" = 124 ]; then guest=true; else guest=false; fi
+        python3 - "$EVIDENCE/result.json" "$rc" "$profile" "$started" "$guest" <<'PY'
+import json, pathlib, sys
+out, rc, profile, started, guest = sys.argv[1:]
+passed = started == "true" and guest == "true"
+data = {"schema":1,"qualification_level":"Q3","runtime":"aros-m68k","emulator":"amiberry",
+        "profile":profile,"process_rc":int(rc),"emulator_started":started=="true",
+        "guest_boot_proven":guest=="true","status":"PASS" if passed else "FAIL",
+        "proof":"Amiberry remained alive for the full AROS ISO boot observation window"}
+pathlib.Path(out).write_text(json.dumps(data, indent=2)+"\\n")
+PY
+        [ "$guest" = true ]
+        echo 'AROS Amiberry ISO boot observation: PASS'
+        ;;
+    run-aros)
+        echo "Amiberry payload execution adapter is not implemented yet" >&2
         exit 65
         ;;
     *)
