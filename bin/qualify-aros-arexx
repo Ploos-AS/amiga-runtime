@@ -69,10 +69,10 @@ cat > "$startup" <<'EOF'
 C:Assign >NIL: T: RAM:
 C:Assign >NIL: ENV: RAM:
 C:Assign >NIL: REXX: S:
-Echo AMIGA_RUNTIME_START >DH1:arexx-stage-start
-Rexxc/RX REXX:amiga-runtime-smoke.rexx >DH1:arexx-guest.log
-Echo AMIGA_RUNTIME_RX_RETURNED >DH1:arexx-stage-rx-returned
-Echo AMIGA_RUNTIME_AREXX_DONE >DH1:arexx-done
+Echo AMIGA_RUNTIME_START >Evidence:arexx-stage-start
+Rexxc/RX REXX:amiga-runtime-smoke.rexx >Evidence:arexx-guest.log
+Echo AMIGA_RUNTIME_RX_RETURNED >Evidence:arexx-stage-rx-returned
+Echo AMIGA_RUNTIME_AREXX_DONE >Evidence:arexx-done
 EOF
 
 config="$EVIDENCE/arexx-fs-uae.conf"
@@ -81,7 +81,9 @@ cat > "$config" <<EOF
 amiga_model = A1200
 kickstart_file = internal
 hard_drive_0 = $AROS/system-root
+hard_drive_0_label = System
 hard_drive_1 = $EVIDENCE
+hard_drive_1_label = Evidence
 fullscreen = 0
 window_width = 640
 window_height = 512
