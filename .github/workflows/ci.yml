@@ -53,6 +53,33 @@ jobs:
           grep -qx 'acquisition=official-nightly-index' aros-cache/manifest.txt
           grep -qx 'target=amiga-m68k' aros-cache/manifest.txt
           cat aros-cache/manifest.txt
+      - name: Cache pinned Amiberry runtime
+        id: amiberry-cache
+        uses: actions/cache@v4
+        with:
+          path: amiberry-cache
+          key: amiga-runtime-amiberry-${{ runner.os }}-${{ hashFiles('runtime/amiberry/pinned.env', 'bin/prepare-amiberry') }}
+      - name: Acquire pinned Amiberry runtime
+        if: steps.amiberry-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p "$PWD/amiberry-cache"
+          docker run --rm \
+            -v "$PWD/amiberry-cache:/opt/amiga-runtime/amiberry" \
+            amiga-runtime:m2 prepare-amiberry
+      - name: Verify pinned Amiberry runtime
+        run: |
+          test -s amiberry-cache/manifest.txt
+          test -s amiberry-cache/executable.txt
+          grep -q '^version=' amiberry-cache/manifest.txt
+          cat amiberry-cache/manifest.txt
+      - name: Probe Amiberry backend
+        run: |
+          mkdir -p "$PWD/amiberry-evidence"
+          docker run --rm \
+            -v "$PWD/amiberry-cache:/opt/amiga-runtime/amiberry:ro" \
+            amiga-runtime:m2 sh -c 'exe=$(cat /opt/amiga-runtime/amiberry/executable.txt); "$exe" --version' \
+            | tee "$PWD/amiberry-evidence/probe.log"
+
       - name: Qualify AROS guest boot
         run: |
           mkdir -p "$PWD/runtime-evidence"
@@ -77,6 +104,8 @@ jobs:
           path: |
             evidence/
             runtime-evidence/
+            amiberry-evidence/
+            amiberry-cache/manifest.txt
             aros-cache/manifest.txt
             aros-cache/archive.sha256
             aros-cache/iso-root-inventory.txt
