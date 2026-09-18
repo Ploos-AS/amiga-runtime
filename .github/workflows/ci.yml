@@ -68,7 +68,7 @@ jobs:
           mkdir -p "$PWD/runtime-evidence"
           set +e
           docker run --rm \
-            -v "$PWD/aros-cache:/opt/amiga-runtime/aros:ro" \
+            -v "$PWD/aros-cache:/opt/amiga-runtime/aros" \
             -v "$PWD/runtime-evidence:/work/evidence" \
             amiga-runtime:m2 qualify-aros-arexx
           rc=$?
