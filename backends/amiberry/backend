@@ -4,16 +4,27 @@ op=${1:-}
 shift || true
 case "$op" in
     probe)
-        if ! command -v amiberry >/dev/null 2>&1; then
+        exe=${AMIBERRY_EXECUTABLE:-}
+        if [ -z "$exe" ] && [ -s /opt/amiga-runtime/amiberry/executable.txt ]; then
+            exe=$(cat /opt/amiga-runtime/amiberry/executable.txt)
+        fi
+        if [ -z "$exe" ]; then
+            exe=$(command -v amiberry 2>/dev/null || true)
+        fi
+        if [ -z "$exe" ] || [ ! -x "$exe" ]; then
             printf '%s\n' '{"schema":1,"backend":"amiberry","status":"unavailable"}'
             exit 69
         fi
-        version=$(amiberry --version 2>&1 | head -n1 || true)
+        version=$("$exe" --version 2>&1 | head -n1 || true)
         printf '{"schema":1,"backend":"amiberry","status":"available","version":"%s"}\n' "$(printf '%s' "$version" | sed 's/"/\\\"/g')"
         ;;
     qualify-aros-boot|run-aros)
-        command -v amiberry >/dev/null 2>&1 || {
-            echo "Amiberry backend is first-class but the emulator is not installed in this image yet" >&2
+        exe=${AMIBERRY_EXECUTABLE:-}
+        if [ -z "$exe" ] && [ -s /opt/amiga-runtime/amiberry/executable.txt ]; then
+            exe=$(cat /opt/amiga-runtime/amiberry/executable.txt)
+        fi
+        [ -n "$exe" ] && [ -x "$exe" ] || {
+            echo "Amiberry backend runtime is unavailable" >&2
             exit 69
         }
         echo "Amiberry operation '$op' adapter is not implemented yet" >&2
