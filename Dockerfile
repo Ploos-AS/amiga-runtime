@@ -21,6 +21,7 @@ RUN apt-get update \
 
 COPY bin/amiga-runtime /usr/local/bin/amiga-runtime
 COPY bin/prepare-aros /usr/local/bin/prepare-aros
+COPY bin/prepare-amiberry /usr/local/bin/prepare-amiberry
 COPY bin/prepare-aros-guest-marker /usr/local/bin/prepare-aros-guest-marker
 COPY bin/run-aros /usr/local/bin/run-aros
 COPY bin/qualify-aros-boot /usr/local/bin/qualify-aros-boot
@@ -30,7 +31,7 @@ COPY profiles /opt/amiga-runtime/profiles
 COPY runtime /opt/amiga-runtime/runtime
 COPY backends /opt/amiga-runtime/backends
 
-RUN chmod 0755 /usr/local/bin/amiga-runtime /usr/local/bin/prepare-aros /usr/local/bin/prepare-aros-guest-marker /usr/local/bin/run-aros /usr/local/bin/qualify-aros-boot /usr/local/bin/qualify-aros-arexx \
+RUN chmod 0755 /usr/local/bin/amiga-runtime /usr/local/bin/prepare-aros /usr/local/bin/prepare-amiberry /usr/local/bin/prepare-aros-guest-marker /usr/local/bin/run-aros /usr/local/bin/qualify-aros-boot /usr/local/bin/qualify-aros-arexx \
     && chmod 0755 /opt/amiga-runtime/backends/fs-uae/backend /opt/amiga-runtime/backends/fs-uae/qualify-aros-boot /opt/amiga-runtime/backends/fs-uae/run-aros /opt/amiga-runtime/backends/amiberry/backend \
     && ln -sf /opt/amiga-runtime/backends/fs-uae/backend /usr/local/bin/backend-fs-uae \
     && ln -sf /opt/amiga-runtime/backends/amiberry/backend /usr/local/bin/backend-amiberry \
