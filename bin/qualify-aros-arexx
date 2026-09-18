@@ -1,0 +1,37 @@
+#!/bin/sh
+set -eu
+
+AROS=${AROS_RUNTIME_DIR:-/opt/amiga-runtime/aros}
+EVIDENCE=${AMIGA_RUNTIME_EVIDENCE:-/work/evidence}
+PAYLOAD=${AMIGA_RUNTIME_AREXX_PAYLOAD:-/opt/amiga-runtime/runtime/arexx/smoke.rexx}
+TOKEN=AMIGA_RUNTIME_AREXX_OK
+
+mkdir -p "$EVIDENCE"
+test -s "$AROS/aros.iso" || { echo "missing AROS ISO" >&2; exit 69; }
+test -s "$PAYLOAD" || { echo "missing ARexx payload" >&2; exit 69; }
+
+# The boot ISO gate cannot honestly prove ARexx by emulator survival. This
+# probe records whether the current redistributable AROS artifact exposes a
+# guest filesystem path that can be injected without rebuilding upstream.
+# Until such a path exists, ARexx remains PENDING rather than being faked.
+startup=$(find "$AROS/iso-root" -type f -ipath '*/s/startup-sequence' -print -quit 2>/dev/null || true)
+if [ -z "$startup" ]; then
+    python3 - "$EVIDENCE/arexx-result.json" <<'PY'
+import json, pathlib, sys
+pathlib.Path(sys.argv[1]).write_text(json.dumps({
+    "schema": 1,
+    "runtime": "aros-m68k",
+    "emulator": "fs-uae",
+    "guest_arch": "m68k",
+    "gate": "arexx",
+    "status": "PENDING",
+    "reason": "current boot ISO exposes no writable guest Startup-Sequence injection path",
+    "token": "AMIGA_RUNTIME_AREXX_OK",
+}, indent=2) + "\n")
+PY
+    echo "AROS m68k ARexx injection path: PENDING"
+    exit 78
+fi
+
+echo "AROS m68k ARexx injection path discovered: $startup"
+echo "$TOKEN" > "$EVIDENCE/expected-arexx-token.txt"
