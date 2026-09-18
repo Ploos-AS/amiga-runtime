@@ -15,14 +15,14 @@
 
 - [ ] Pin and verify a redistributable AROS **m68k** runtime source/artifact
 - [ ] Reject i386/x86 AROS artifacts for Amiga qualification
-- [ ] Automate AROS/m68k boot under FS-UAE
+- [x] Automate AROS/m68k boot under FS-UAE
 - [ ] Provide an m68k ARexx-compatible qualification environment
 - [ ] Run an m68k ARexx smoke test inside the guest
 - [ ] Inject test payload without modifying source artifacts
 - [ ] Capture console/serial output
-- [ ] Enforce boot and execution timeouts
+- [x] Enforce boot timeout\n- [ ] Enforce guest execution timeout
 - [ ] Emit PASS/FAIL JSON and JUnit evidence
-- [ ] Qualify the runtime image on GitHub Actions
+- [x] Qualify the AROS/m68k FS-UAE boot gate on GitHub Actions\n- [ ] Qualify m68k ARexx guest execution on GitHub Actions
 
 ## M2 — Project integration
 
