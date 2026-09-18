@@ -94,6 +94,17 @@ test -n "$rom" && test -n "$ext" || { echo 'AROS m68k ROM pair not found in upst
 cp "$rom" "$DEST/aros-rom.bin"
 cp "$ext" "$DEST/aros-ext.bin"
 
+# xorriso exposes the complete Amiga filesystem of current AROS nightlies.
+# Preserve it as the writable qualification tree; the upstream ISO remains
+# untouched and checksummed separately.
+rm -rf "$DEST/system-root"
+cp -a "$romtree" "$DEST/system-root"
+system_startup=$(find "$DEST/system-root" -type f -ipath '*/s/startup-sequence' -print -quit || true)
+test -n "$system_startup" || { echo 'AROS writable system Startup-Sequence not found' >&2; exit 66; }
+printf '%s\n' "$system_startup" > "$DEST/system-startup-sequence-path.txt"
+test -s "$DEST/system-root/Libs/rexxsyslib.library" || { echo 'AROS m68k rexxsyslib.library not found' >&2; exit 66; }
+test -s "$DEST/system-root/Rexxc/RX" || { echo 'AROS m68k RX command not found' >&2; exit 66; }
+
 # Preserve a deterministic inventory of the 7z-extracted filesystem so CI
 # failures can be diagnosed from artifacts instead of inferred from layout.
 (
