@@ -14,14 +14,14 @@ unzip -q "$archive" -d "$DEST/root"
 # Release archives may use versioned executable names or preserve no executable bit.
 # Identify the ELF emulator binary by content instead of assuming an archive layout.
 exe=
-for candidate in $(find "$DEST/root" -type f -print); do
+for candidate in $(find "$DEST/root" "$DEST/deb-root" -type f -print 2>/dev/null); do
     base=$(basename "$candidate")
     case "$base" in
         amiberry|amiberry-*|Amiberry|Amiberry-*) exe=$candidate; break ;;
     esac
 done
 if [ -z "$exe" ]; then
-    for candidate in $(find "$DEST/root" -type f -print); do
+    for candidate in $(find "$DEST/root" "$DEST/deb-root" -type f -print 2>/dev/null); do
         if file "$candidate" 2>/dev/null | grep -q 'ELF .* executable'; then
             exe=$candidate
             break
@@ -30,7 +30,7 @@ if [ -z "$exe" ]; then
 fi
 if [ -z "$exe" ]; then
     echo "Amiberry executable not found in pinned artifact; extracted layout:" >&2
-    find "$DEST/root" -maxdepth 3 -type f -printf '%P\n' | sort | head -200 >&2
+    find "$DEST/root" "$DEST/deb-root" -maxdepth 5 -type f -print 2>/dev/null | sort | head -200 >&2
     exit 66
 fi
 chmod 0755 "$exe"
