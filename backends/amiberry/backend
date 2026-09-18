@@ -1,0 +1,26 @@
+#!/bin/sh
+set -eu
+op=${1:-}
+shift || true
+case "$op" in
+    probe)
+        if ! command -v amiberry >/dev/null 2>&1; then
+            printf '%s\n' '{"schema":1,"backend":"amiberry","status":"unavailable"}'
+            exit 69
+        fi
+        version=$(amiberry --version 2>&1 | head -n1 || true)
+        printf '{"schema":1,"backend":"amiberry","status":"available","version":"%s"}\n' "$(printf '%s' "$version" | sed 's/"/\\\"/g')"
+        ;;
+    qualify-aros-boot|run-aros)
+        command -v amiberry >/dev/null 2>&1 || {
+            echo "Amiberry backend is first-class but the emulator is not installed in this image yet" >&2
+            exit 69
+        }
+        echo "Amiberry operation '$op' adapter is not implemented yet" >&2
+        exit 65
+        ;;
+    *)
+        echo "usage: backend-amiberry probe|qualify-aros-boot|run-aros ..." >&2
+        exit 64
+        ;;
+esac
