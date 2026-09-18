@@ -68,9 +68,10 @@ trap 'cp "$original" "$startup" 2>/dev/null || true; rm -f "$original"' EXIT INT
 cat > "$startup" <<'EOF'
 C:Assign >NIL: T: RAM:
 C:Assign >NIL: ENV: RAM:
-C:Assign >NIL: REXX: Rexxc
-C:Assign >NIL: REXXHOSTS: Rexxc
-Rexxc/RX S:amiga-runtime-smoke.rexx >DH1:arexx-guest.log
+C:Assign >NIL: REXX: S:
+Echo AMIGA_RUNTIME_START >DH1:arexx-stage-start
+Rexxc/RX REXX:amiga-runtime-smoke.rexx >DH1:arexx-guest.log
+Echo AMIGA_RUNTIME_RX_RETURNED >DH1:arexx-stage-rx-returned
 Echo AMIGA_RUNTIME_AREXX_DONE >DH1:arexx-done
 EOF
 
@@ -85,7 +86,7 @@ fullscreen = 0
 window_width = 640
 window_height = 512
 EOF
-rm -f "$EVIDENCE/arexx-done" "$EVIDENCE/arexx-guest.log"
+rm -f "$EVIDENCE/arexx-done" "$EVIDENCE/arexx-guest.log" "$EVIDENCE/arexx-stage-start" "$EVIDENCE/arexx-stage-rx-returned"
 set +e
 XDG_RUNTIME_DIR=/tmp/amiga-runtime-xdg
 mkdir -p "$XDG_RUNTIME_DIR"
