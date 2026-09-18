@@ -75,8 +75,9 @@ jobs:
         run: |
           mkdir -p "$PWD/amiberry-evidence"
           docker run --rm \
+            --entrypoint backend-amiberry \
             -v "$PWD/amiberry-cache:/opt/amiga-runtime/amiberry:ro" \
-            amiga-runtime:m2 backend-amiberry probe \
+            amiga-runtime:m2 probe \
             | tee "$PWD/amiberry-evidence/probe.json"
           jq -e '.backend == "amiberry" and .status == "available"' "$PWD/amiberry-evidence/probe.json"
 
