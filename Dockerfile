@@ -29,7 +29,7 @@ COPY lib /opt/amiga-runtime/lib
 COPY profiles /opt/amiga-runtime/profiles
 COPY runtime /opt/amiga-runtime/runtime
 
-RUN chmod 0755 /usr/local/bin/amiga-runtime /usr/local/bin/prepare-aros /usr/local/bin/prepare-aros-guest-marker /usr/local/bin/run-aros /usr/local/bin/qualify-aros-boot \
+RUN chmod 0755 /usr/local/bin/amiga-runtime /usr/local/bin/prepare-aros /usr/local/bin/prepare-aros-guest-marker /usr/local/bin/run-aros /usr/local/bin/qualify-aros-boot /usr/local/bin/qualify-aros-arexx \
     && mkdir -p /opt/amiga-runtime/aros /work/input /work/evidence
 
 WORKDIR /work
