@@ -30,7 +30,7 @@ case "${1:-}" in
         echo 'amiga-runtime M1 harness self-test: PASS'
         ;;
     backends)
-        printf '%s\n' 'fs-uae stable' 'amiberry planned' 'fellowng experimental'
+        printf '%s\n' 'fs-uae stable' 'amiberry adapter' 'fellowng experimental'
         ;;
     profiles)
         find "$PROFILES" -maxdepth 1 -type f -name '*.conf' -printf '%f\n' | sed 's/\.conf$//' | sort
@@ -62,8 +62,12 @@ case "${1:-}" in
         done
         case "$runtime" in
             aros|fs-uae) exec run-aros "$program" "$profile" ;;
-            amiberry|fellowng)
-                echo "runtime backend '$runtime' is declared by the contract but is not yet available in this image" >&2
+            amiberry)
+                shift_backend=run-aros
+                exec backend-amiberry "$shift_backend" "$program" "$profile"
+                ;;
+            fellowng)
+                echo "runtime backend 'fellowng' is declared by the contract but is not yet available in this image" >&2
                 exit 65
                 ;;
             *) echo "unsupported runtime backend: $runtime" >&2; exit 65 ;;
