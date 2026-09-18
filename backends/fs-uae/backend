@@ -1,0 +1,22 @@
+#!/bin/sh
+set -eu
+
+op=${1:-}
+shift || true
+case "$op" in
+    probe)
+        command -v fs-uae >/dev/null || exit 69
+        version=$(fs-uae --version 2>&1 | head -n1 || true)
+        printf '{"schema":1,"backend":"fs-uae","status":"available","version":"%s"}\n' "$(printf '%s' "$version" | sed 's/"/\\\"/g')"
+        ;;
+    qualify-aros-boot)
+        exec qualify-aros-boot-fs-uae "$@"
+        ;;
+    run-aros)
+        exec run-aros-fs-uae "$@"
+        ;;
+    *)
+        echo "usage: backend-fs-uae probe|qualify-aros-boot|run-aros ..." >&2
+        exit 64
+        ;;
+esac
