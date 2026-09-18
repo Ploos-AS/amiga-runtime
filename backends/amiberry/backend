@@ -15,7 +15,15 @@ case "$op" in
             printf '%s\n' '{"schema":1,"backend":"amiberry","status":"unavailable"}'
             exit 69
         fi
-        version=$("$exe" --version 2>&1 | head -n1 || true)
+        set +e
+        output=$("$exe" --version 2>&1)
+        rc=$?
+        set -e
+        version=$(printf '%s\n' "$output" | head -n1)
+        if [ "$rc" -ne 0 ] || printf '%s' "$output" | grep -qiE 'error while loading shared libraries|not found'; then
+            printf '{"schema":1,"backend":"amiberry","status":"unavailable","process_rc":%s,"error":"%s"}\n' "$rc" "$(printf '%s' "$version" | sed 's/"/\\\"/g')"
+            exit 69
+        fi
         printf '{"schema":1,"backend":"amiberry","status":"available","version":"%s"}\n' "$(printf '%s' "$version" | sed 's/"/\\\"/g')"
         ;;
     qualify-aros-boot)
