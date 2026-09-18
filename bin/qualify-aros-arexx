@@ -70,7 +70,10 @@ C:Assign >NIL: T: RAM:
 C:Assign >NIL: ENV: RAM:
 C:Assign >NIL: REXX: S:
 Echo AMIGA_RUNTIME_START >Evidence:arexx-stage-start
-C:Assign >NIL: LIBS: Libs
+C:Assign >NIL: LIBS: System:Libs
+C:Assign >NIL: C: System:C
+C:Assign >NIL: DEVS: System:Devs
+C:Assign >NIL: L: System:L
 Rexxc/RX REXX:amiga-runtime-smoke.rexx >Evidence:arexx-guest.log
 Echo AMIGA_RUNTIME_RX_RETURNED >Evidence:arexx-stage-rx-returned
 Echo AMIGA_RUNTIME_AREXX_DONE >Evidence:arexx-done
