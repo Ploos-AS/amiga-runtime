@@ -13,6 +13,7 @@ RUN apt-get update \
        lhasa \
        libserialport0 \
        libportmidi0 \
+       libenet7 \
        7zip \
        python3 \
        unzip \
