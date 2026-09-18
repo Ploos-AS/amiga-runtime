@@ -76,8 +76,9 @@ jobs:
           mkdir -p "$PWD/amiberry-evidence"
           docker run --rm \
             -v "$PWD/amiberry-cache:/opt/amiga-runtime/amiberry:ro" \
-            amiga-runtime:m2 sh -c 'exe=$(cat /opt/amiga-runtime/amiberry/executable.txt); "$exe" --version' \
-            | tee "$PWD/amiberry-evidence/probe.log"
+            amiga-runtime:m2 backend-amiberry probe \
+            | tee "$PWD/amiberry-evidence/probe.json"
+          jq -e '.backend == "amiberry" and .status == "available"' "$PWD/amiberry-evidence/probe.json"
 
       - name: Qualify AROS guest boot
         run: |
