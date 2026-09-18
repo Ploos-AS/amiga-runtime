@@ -9,6 +9,7 @@ usage:
   amiga-runtime self-test
   amiga-runtime profiles
   amiga-runtime prepare-aros
+  amiga-runtime prepare-amiberry
   amiga-runtime qualify-aros-boot [PROFILE]
   amiga-runtime qualify-aros-arexx
   amiga-runtime backends
@@ -37,6 +38,9 @@ case "${1:-}" in
         ;;
     prepare-aros)
         exec prepare-aros
+        ;;
+    prepare-amiberry)
+        exec prepare-amiberry
         ;;
     qualify-aros-boot)
         shift
