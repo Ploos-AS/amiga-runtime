@@ -78,8 +78,11 @@ C:Assign >NIL: REXX: System:S
 C:Assign >NIL: REXXHOSTS: System:Rexxc
 C:Assign >NIL: T: RAM:
 C:Assign >NIL: ENV: RAM:
-Rexxc/RexxMast >NIL:
+Echo AMIGA_RUNTIME_BEFORE_REXXMAST >Evidence:arexx-stage-before-rexxmast
+Run >NIL: Rexxc/RexxMast
+Echo AMIGA_RUNTIME_AFTER_REXXMAST >Evidence:arexx-stage-after-rexxmast
 C:Wait 2
+Echo AMIGA_RUNTIME_BEFORE_RX >Evidence:arexx-stage-before-rx
 Rexxc/RX REXX:amiga-runtime-smoke.rexx >Evidence:arexx-guest.log
 Echo AMIGA_RUNTIME_RX_RETURNED >Evidence:arexx-stage-rx-returned
 Echo AMIGA_RUNTIME_AREXX_DONE >Evidence:arexx-done
@@ -102,7 +105,7 @@ fullscreen = 0
 window_width = 640
 window_height = 512
 EOF
-rm -f "$EVIDENCE/arexx-done" "$EVIDENCE/arexx-guest.log" "$EVIDENCE/arexx-stage-start" "$EVIDENCE/arexx-stage-rx-returned"
+rm -f "$EVIDENCE/arexx-done" "$EVIDENCE/arexx-guest.log" "$EVIDENCE/arexx-stage-start" "$EVIDENCE/arexx-stage-before-rexxmast" "$EVIDENCE/arexx-stage-after-rexxmast" "$EVIDENCE/arexx-stage-before-rx" "$EVIDENCE/arexx-stage-rx-returned"
 set +e
 XDG_RUNTIME_DIR=/tmp/amiga-runtime-xdg
 mkdir -p "$XDG_RUNTIME_DIR"
