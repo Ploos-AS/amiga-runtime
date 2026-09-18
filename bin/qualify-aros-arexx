@@ -74,6 +74,12 @@ C:Assign >NIL: LIBS: System:Libs
 C:Assign >NIL: C: System:C
 C:Assign >NIL: DEVS: System:Devs
 C:Assign >NIL: L: System:L
+C:Assign >NIL: REXX: System:S
+C:Assign >NIL: REXXHOSTS: System:Rexxc
+C:Assign >NIL: T: RAM:
+C:Assign >NIL: ENV: RAM:
+Rexxc/RexxMast >NIL:
+C:Wait 2
 Rexxc/RX REXX:amiga-runtime-smoke.rexx >Evidence:arexx-guest.log
 Echo AMIGA_RUNTIME_RX_RETURNED >Evidence:arexx-stage-rx-returned
 Echo AMIGA_RUNTIME_AREXX_DONE >Evidence:arexx-done
