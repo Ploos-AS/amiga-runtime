@@ -11,7 +11,7 @@ usage:
   amiga-runtime prepare-aros
   amiga-runtime qualify-aros-boot [PROFILE]
   amiga-runtime qualify-aros-arexx
-  amiga-runtime test PROGRAM [--runtime aros] [--profile PROFILE]
+  amiga-runtime test PROGRAM [--runtime aros|fs-uae|amiberry|fellowng] [--profile PROFILE]
 EOF
 }
 
@@ -56,8 +56,14 @@ case "${1:-}" in
                 *) echo "unknown argument: $1" >&2; exit 64 ;;
             esac
         done
-        test "$runtime" = aros || { echo "M1 supports only the AROS backend" >&2; exit 65; }
-        exec run-aros "$program" "$profile"
+        case "$runtime" in
+            aros|fs-uae) exec run-aros "$program" "$profile" ;;
+            amiberry|fellowng)
+                echo "runtime backend '$runtime' is declared by the contract but is not yet available in this image" >&2
+                exit 65
+                ;;
+            *) echo "unsupported runtime backend: $runtime" >&2; exit 65 ;;
+        esac
         ;;
     -h|--help|help|'') usage ;;
     *) usage >&2; exit 64 ;;
