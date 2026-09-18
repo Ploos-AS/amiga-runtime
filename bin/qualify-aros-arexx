@@ -14,7 +14,7 @@ test -s "$PAYLOAD" || { echo "missing ARexx payload" >&2; exit 69; }
 # probe records whether the current redistributable AROS artifact exposes a
 # guest filesystem path that can be injected without rebuilding upstream.
 # Until such a path exists, ARexx remains PENDING rather than being faked.
-startup=$(find "$AROS/iso-root" -type f -ipath '*/s/startup-sequence' -print -quit 2>/dev/null || true)
+startup=$(find "$AROS/system-root" -type f -ipath '*/s/startup-sequence' -print -quit 2>/dev/null || true)
 if [ -z "$startup" ]; then
     python3 - "$EVIDENCE/arexx-result.json" <<'PY'
 import json, pathlib, sys
@@ -25,7 +25,7 @@ pathlib.Path(sys.argv[1]).write_text(json.dumps({
     "guest_arch": "m68k",
     "gate": "arexx",
     "status": "PENDING",
-    "reason": "current boot ISO exposes no writable guest Startup-Sequence injection path",
+    "reason": "prepared AROS system tree exposes no writable guest Startup-Sequence injection path",
     "token": "AMIGA_RUNTIME_AREXX_OK",
 }, indent=2) + "\n")
 PY
@@ -33,5 +33,28 @@ PY
     exit 78
 fi
 
+test -s "$AROS/system-root/Libs/rexxsyslib.library" || { echo "missing m68k rexxsyslib.library" >&2; exit 69; }
+test -s "$AROS/system-root/Rexxc/RX" || { echo "missing m68k RX command" >&2; exit 69; }
+cp "$PAYLOAD" "$AROS/system-root/S/amiga-runtime-smoke.rexx"
+{
+    echo "startup=$startup"
+    echo "rx=$AROS/system-root/Rexxc/RX"
+    echo "rexxsyslib=$AROS/system-root/Libs/rexxsyslib.library"
+    echo "payload=$AROS/system-root/S/amiga-runtime-smoke.rexx"
+} > "$EVIDENCE/arexx-injection.txt"
 echo "AROS m68k ARexx injection path discovered: $startup"
 echo "$TOKEN" > "$EVIDENCE/expected-arexx-token.txt"
+python3 - "$EVIDENCE/arexx-result.json" <<'PY'
+import json, pathlib, sys
+pathlib.Path(sys.argv[1]).write_text(json.dumps({
+    "schema": 1,
+    "runtime": "aros-m68k",
+    "emulator": "fs-uae",
+    "guest_arch": "m68k",
+    "gate": "arexx",
+    "status": "READY",
+    "reason": "writable AROS m68k system tree contains Startup-Sequence, RX and rexxsyslib.library",
+    "token": "AMIGA_RUNTIME_AREXX_OK",
+}, indent=2) + "\n")
+PY
+echo "AROS m68k ARexx guest execution path: READY"
