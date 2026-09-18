@@ -46,3 +46,7 @@ AROS qualification must never be reported as equivalent to AmigaOS qualification
 This repository must remain redistributable. Do not commit or bake proprietary Kickstart ROMs, Workbench/AmigaOS media, keys, or licensed system files into the image.
 
 See [ROADMAP.md](ROADMAP.md) and [docs/M0_ARCHITECTURE.md](docs/M0_ARCHITECTURE.md).
+
+## Emulator backends
+
+The runtime uses an emulator-neutral backend contract. FS-UAE is the reference implementation; Amiberry and FellowNG are first-class targets. See [docs/EMULATOR_BACKEND_CONTRACT.md](docs/EMULATOR_BACKEND_CONTRACT.md).
