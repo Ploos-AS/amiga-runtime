@@ -12,6 +12,7 @@ RUN apt-get update \
        jq \
        lhasa \
        libserialport0 \
+       libportmidi0 \
        7zip \
        python3 \
        unzip \
