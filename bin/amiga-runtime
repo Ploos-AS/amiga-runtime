@@ -11,6 +11,7 @@ usage:
   amiga-runtime prepare-aros
   amiga-runtime qualify-aros-boot [PROFILE]
   amiga-runtime qualify-aros-arexx
+  amiga-runtime backends
   amiga-runtime test PROGRAM [--runtime aros|fs-uae|amiberry|fellowng] [--profile PROFILE]
 EOF
 }
@@ -27,6 +28,9 @@ case "${1:-}" in
         test -d "$PROFILES"
         test -f /opt/amiga-runtime/lib/write-result.py
         echo 'amiga-runtime M1 harness self-test: PASS'
+        ;;
+    backends)
+        printf '%s\n' 'fs-uae stable' 'amiberry planned' 'fellowng experimental'
         ;;
     profiles)
         find "$PROFILES" -maxdepth 1 -type f -name '*.conf' -printf '%f\n' | sed 's/\.conf$//' | sort
