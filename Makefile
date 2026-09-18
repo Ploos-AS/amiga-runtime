@@ -6,6 +6,9 @@ check:
 	sh -n bin/prepare-aros-guest-marker
 	sh -n bin/run-aros
 	sh -n bin/qualify-aros-boot
+	sh -n backends/fs-uae/backend
+	sh -n backends/fs-uae/qualify-aros-boot
+	sh -n backends/fs-uae/run-aros
 	python3 -m py_compile lib/write-result.py lib/generate-fs-uae-config.py
 	test -f profiles/a500.conf
 	test -f profiles/a500plus.conf
