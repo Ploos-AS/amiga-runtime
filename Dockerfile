@@ -39,6 +39,7 @@ RUN chmod 0755 /usr/local/bin/amiga-runtime /usr/local/bin/prepare-aros /usr/loc
     && ln -sf /opt/amiga-runtime/backends/fs-uae/run-aros /usr/local/bin/run-aros-fs-uae \
     && mkdir -p /opt/amiga-runtime/aros /work/input /work/evidence
 
+ENV AMIBERRY_RUNTIME_DIR=/opt/amiga-runtime/amiberry
 WORKDIR /work
 ENTRYPOINT ["amiga-runtime"]
 CMD ["self-test"]
