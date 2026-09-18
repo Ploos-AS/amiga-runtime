@@ -63,6 +63,18 @@ jobs:
             amiga-runtime:m2 qualify-aros-boot a1200-020-aros
           jq -e '.status == "PASS" and .emulator == "fs-uae" and .guest_boot_proven == true' runtime-evidence/result.json
           test "$(cat runtime-evidence/AMIGA_RUNTIME_BOOT_OK)" = "AMIGA_RUNTIME_BOOT_OK"
+      - name: Probe m68k ARexx guest qualification path
+        run: |
+          mkdir -p "$PWD/runtime-evidence"
+          set +e
+          docker run --rm \
+            -v "$PWD/aros-cache:/opt/amiga-runtime/aros:ro" \
+            -v "$PWD/runtime-evidence:/work/evidence" \
+            amiga-runtime:m2 qualify-aros-arexx
+          rc=$?
+          set -e
+          test "$rc" -eq 78
+          jq -e '.status == "PENDING" and .gate == "arexx" and .guest_arch == "m68k"' runtime-evidence/arexx-result.json
       - name: Verify result writer
         run: |
           mkdir -p evidence
