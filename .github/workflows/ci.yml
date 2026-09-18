@@ -81,6 +81,18 @@ jobs:
             | tee "$PWD/amiberry-evidence/probe.json"
           jq -e '.backend == "amiberry" and .status == "available"' "$PWD/amiberry-evidence/probe.json"
 
+      - name: Qualify AROS guest boot with Amiberry
+        run: |
+          mkdir -p "$PWD/amiberry-runtime-evidence"
+          docker run --rm \
+            --entrypoint backend-amiberry \
+            -e AMIGA_RUNTIME_BOOT_TIMEOUT=30 \
+            -v "$PWD/aros-cache:/opt/amiga-runtime/aros:ro" \
+            -v "$PWD/amiberry-cache:/opt/amiga-runtime/amiberry:ro" \
+            -v "$PWD/amiberry-runtime-evidence:/work/evidence" \
+            amiga-runtime:m2 qualify-aros-boot a1200-020-aros
+          jq -e '.status == "PASS" and .emulator == "amiberry" and .guest_boot_proven == true' amiberry-runtime-evidence/result.json
+
       - name: Qualify AROS guest boot
         run: |
           mkdir -p "$PWD/runtime-evidence"
@@ -106,6 +118,7 @@ jobs:
             evidence/
             runtime-evidence/
             amiberry-evidence/
+            amiberry-runtime-evidence/
             amiberry-cache/manifest.txt
             aros-cache/manifest.txt
             aros-cache/archive.sha256
