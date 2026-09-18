@@ -11,6 +11,7 @@ RUN apt-get update \
        fs-uae \
        jq \
        lhasa \
+       libserialport0 \
        7zip \
        python3 \
        unzip \
