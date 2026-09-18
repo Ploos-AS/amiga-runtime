@@ -93,3 +93,5 @@ jobs:
             aros-cache/archive.sha256
             aros-cache/iso-root-inventory.txt
             aros-cache/startup-sequence-path.txt
+            aros-cache/xorriso-root-inventory.txt
+            aros-cache/xorriso-startup-sequence-path.txt
