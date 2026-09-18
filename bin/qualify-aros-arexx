@@ -60,6 +60,31 @@ PY
 echo "AROS m68k ARexx guest execution path: READY"
 
 
+# AROS m68k does not ship RexxMast in the current official nightly.
+# The official AROS m68k nightly currently contains RX/rexxsyslib artifacts but
+# does not contain RexxMast. Do not manufacture an ARexx PASS from that image.
+# An AmigaOS guest with externally supplied Kickstart/OS assets is required for
+# a genuine ARexx qualification.
+if [ ! -s "$AROS/system-root/Rexxc/RexxMast" ] && [ ! -s "$AROS/system-root/C/RexxMast" ] && [ ! -s "$AROS/system-root/System/RexxMast" ]; then
+    python3 - "$EVIDENCE/arexx-result.json" <<'PY'
+import json, pathlib, sys
+pathlib.Path(sys.argv[1]).write_text(json.dumps({
+    "schema": 1,
+    "runtime": "aros-m68k",
+    "emulator": "fs-uae",
+    "guest_arch": "m68k",
+    "gate": "arexx",
+    "status": "NOT_APPLICABLE",
+    "guest_execution": False,
+    "reason": "Official AROS m68k nightly does not ship RexxMast; ARexx requires a separately supplied AmigaOS/ARexx guest.",
+    "upstream_issue": "AROS #866",
+    "token": "AMIGA_RUNTIME_AREXX_OK"
+}, indent=2) + "\n")
+PY
+    printf '%s\n' 'AROS m68k ARexx: NOT_APPLICABLE (RexxMast not present in official nightly)'
+    exit 0
+fi
+
 # Execute the same payload inside the m68k guest.  Preserve the pristine
 # upstream Startup-Sequence and restore it after qualification.
 original="$startup.amiga-runtime-original"
