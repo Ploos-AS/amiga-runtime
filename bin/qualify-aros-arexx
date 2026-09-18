@@ -58,3 +58,75 @@ pathlib.Path(sys.argv[1]).write_text(json.dumps({
 }, indent=2) + "\n")
 PY
 echo "AROS m68k ARexx guest execution path: READY"
+
+
+# Execute the same payload inside the m68k guest.  Preserve the pristine
+# upstream Startup-Sequence and restore it after qualification.
+original="$startup.amiga-runtime-original"
+cp "$startup" "$original"
+trap 'cp "$original" "$startup" 2>/dev/null || true; rm -f "$original"' EXIT INT TERM
+cat > "$startup" <<'EOF'
+C:Assign >NIL: T: RAM:
+C:Assign >NIL: ENV: RAM:
+C:Assign >NIL: REXX: Rexxc
+C:Assign >NIL: REXXHOSTS: Rexxc
+Rexxc/RX S:amiga-runtime-smoke.rexx >DH1:arexx-guest.log
+Echo AMIGA_RUNTIME_AREXX_DONE >DH1:arexx-done
+EOF
+
+config="$EVIDENCE/arexx-fs-uae.conf"
+cat > "$config" <<EOF
+[fs-uae]
+amiga_model = A1200
+kickstart_file = internal
+hard_drive_0 = $AROS/system-root
+hard_drive_1 = $EVIDENCE
+fullscreen = 0
+window_width = 640
+window_height = 512
+EOF
+rm -f "$EVIDENCE/arexx-done" "$EVIDENCE/arexx-guest.log"
+set +e
+XDG_RUNTIME_DIR=/tmp/amiga-runtime-xdg
+mkdir -p "$XDG_RUNTIME_DIR"
+chmod 0700 "$XDG_RUNTIME_DIR"
+export XDG_RUNTIME_DIR LIBGL_ALWAYS_SOFTWARE=1
+timeout "${AMIGA_RUNTIME_AREXX_TIMEOUT:-90}" xvfb-run -a -s '-screen 0 1024x768x24 +extension GLX' \
+    fs-uae "$config" >"$EVIDENCE/arexx-fs-uae.stdout.log" 2>"$EVIDENCE/arexx-fs-uae.stderr.log" &
+pid=$!
+guest_ok=false
+i=0
+while [ "$i" -lt "${AMIGA_RUNTIME_AREXX_TIMEOUT:-90}" ]; do
+    if [ -s "$EVIDENCE/arexx-done" ]; then
+        guest_ok=true
+        break
+    fi
+    sleep 1
+    i=$((i + 1))
+done
+kill "$pid" 2>/dev/null || true
+wait "$pid" 2>/dev/null
+set -e
+
+if [ "$guest_ok" = true ] && grep -Fq "$TOKEN" "$EVIDENCE/arexx-guest.log"; then
+    python3 - "$EVIDENCE/arexx-result.json" <<'PY'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1])
+d = json.loads(p.read_text())
+d.update(status="PASS", guest_execution=True,
+         proof="m68k guest RX executed smoke.rexx and emitted the required token")
+p.write_text(json.dumps(d, indent=2) + "\n")
+PY
+    echo "AROS m68k ARexx guest execution: PASS"
+    exit 0
+fi
+python3 - "$EVIDENCE/arexx-result.json" <<'PY'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1])
+d = json.loads(p.read_text())
+d.update(status="FAIL", guest_execution=False,
+         reason="guest did not emit the required ARexx smoke token")
+p.write_text(json.dumps(d, indent=2) + "\n")
+PY
+echo "AROS m68k ARexx guest execution: FAIL" >&2
+exit 1
