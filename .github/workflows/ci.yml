@@ -60,7 +60,6 @@ jobs:
           path: amiberry-cache
           key: amiga-runtime-amiberry-${{ runner.os }}-${{ hashFiles('runtime/amiberry/pinned.env', 'bin/prepare-amiberry') }}
       - name: Acquire pinned Amiberry runtime
-        if: steps.amiberry-cache.outputs.cache-hit != 'true'
         run: |
           mkdir -p "$PWD/amiberry-cache"
           docker run --rm \
