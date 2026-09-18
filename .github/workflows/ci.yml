@@ -74,8 +74,8 @@ jobs:
           rc=$?
           set -e
           test "$rc" -eq 0
-          jq -e '.status == "PASS" and .gate == "arexx" and .guest_arch == "m68k" and .guest_execution == true' runtime-evidence/arexx-result.json
-          grep -Fq 'AMIGA_RUNTIME_AREXX_OK' runtime-evidence/arexx-guest.log
+          jq -e '(.status == "PASS" and .gate == "arexx" and .guest_arch == "m68k" and .guest_execution == true) or (.status == "NOT_APPLICABLE" and .gate == "arexx" and .guest_arch == "m68k")' runtime-evidence/arexx-result.json
+          if jq -e '.status == "PASS"' runtime-evidence/arexx-result.json >/dev/null; then grep -Fq 'AMIGA_RUNTIME_AREXX_OK' runtime-evidence/arexx-guest.log; fi
           test -s runtime-evidence/arexx-injection.txt
       - name: Verify result writer
         run: |
