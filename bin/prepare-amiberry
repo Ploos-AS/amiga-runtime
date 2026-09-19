@@ -41,5 +41,6 @@ if [ -z "$exe" ]; then
 fi
 chmod 0755 "$exe"
 printf 'version=%s\nasset=%s\nsha256=%s\n' "$AMIBERRY_VERSION" "$AMIBERRY_LINUX_AMD64_ASSET" "$AMIBERRY_LINUX_AMD64_SHA256" > "$DEST/manifest.txt"
-printf '%s\n' "$exe" > "$DEST/executable.txt"
+rel=$(printf '%s\n' "$exe" | sed "s#^$DEST/##")
+printf '%s\n' "$rel" > "$DEST/executable.txt"
 echo "Amiberry $AMIBERRY_VERSION prepared"
