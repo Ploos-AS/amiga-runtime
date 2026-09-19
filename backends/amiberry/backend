@@ -7,6 +7,7 @@ case "$op" in
         exe=${AMIBERRY_EXECUTABLE:-}
         if [ -z "$exe" ] && [ -s /opt/amiga-runtime/amiberry/executable.txt ]; then
             exe=$(cat /opt/amiga-runtime/amiberry/executable.txt)
+            case "$exe" in /*) ;; *) exe="/opt/amiga-runtime/amiberry/$exe" ;; esac
         fi
         if [ -z "$exe" ]; then
             exe=$(command -v amiberry 2>/dev/null || true)
@@ -30,6 +31,7 @@ case "$op" in
         exe=${AMIBERRY_EXECUTABLE:-}
         if [ -z "$exe" ] && [ -s /opt/amiga-runtime/amiberry/executable.txt ]; then
             exe=$(cat /opt/amiga-runtime/amiberry/executable.txt)
+            case "$exe" in /*) ;; *) exe="/opt/amiga-runtime/amiberry/$exe" ;; esac
         fi
         [ -n "$exe" ] && [ -x "$exe" ] || { echo "Amiberry backend runtime is unavailable" >&2; exit 69; }
         profile=${1:-a1200-020-aros}
