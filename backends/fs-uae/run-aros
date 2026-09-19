@@ -4,14 +4,19 @@ set -eu
 program=${1:?usage: run-aros PROGRAM PROFILE}
 profile=${2:?usage: run-aros PROGRAM PROFILE}
 PROFILES=${AMIGA_RUNTIME_PROFILES:-/opt/amiga-runtime/profiles}
-AROS_DIR=${AROS_RUNTIME_DIR:-/opt/amiga-runtime/aros}\nAROS_ISO=${AROS_BOOT_IMAGE_PREPARED:-$AROS_DIR/aros.iso}\nAROS_ROM=${AROS_ROM_PREPARED:-$AROS_DIR/aros-rom.bin}\nAROS_EXT=${AROS_EXT_PREPARED:-$AROS_DIR/aros-ext.bin}
+AROS_DIR=${AROS_RUNTIME_DIR:-/opt/amiga-runtime/aros}
+AROS_ISO=${AROS_BOOT_IMAGE_PREPARED:-$AROS_DIR/aros.iso}
+AROS_ROM=${AROS_ROM_PREPARED:-$AROS_DIR/aros-rom.bin}
+AROS_EXT=${AROS_EXT_PREPARED:-$AROS_DIR/aros-ext.bin}
 EVIDENCE=${AMIGA_RUNTIME_EVIDENCE:-/work/evidence}
 TIMEOUT=${AMIGA_RUNTIME_TIMEOUT:-60}
 
 mkdir -p "$EVIDENCE"
 test -f "$program" || { echo "program not found: $program" >&2; exit 66; }
 test -f "$PROFILES/$profile.conf" || { echo "unknown profile: $profile" >&2; exit 66; }
-test -f "$AROS_ISO" || { echo "AROS ISO not prepared: $AROS_ISO" >&2; exit 69; }\ntest -f "$AROS_ROM" || { echo "AROS ROM not prepared: $AROS_ROM" >&2; exit 69; }\ntest -f "$AROS_EXT" || { echo "AROS extended ROM not prepared: $AROS_EXT" >&2; exit 69; }
+test -f "$AROS_ISO" || { echo "AROS ISO not prepared: $AROS_ISO" >&2; exit 69; }
+test -f "$AROS_ROM" || { echo "AROS ROM not prepared: $AROS_ROM" >&2; exit 69; }
+test -f "$AROS_EXT" || { echo "AROS extended ROM not prepared: $AROS_EXT" >&2; exit 69; }
 
 cp "$program" "$EVIDENCE/payload"
 sha256sum "$program" > "$EVIDENCE/payload.sha256"
