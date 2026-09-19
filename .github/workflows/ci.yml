@@ -61,10 +61,19 @@ jobs:
           key: amiga-runtime-amiberry-${{ runner.os }}-${{ hashFiles('runtime/amiberry/pinned.env', 'bin/prepare-amiberry') }}
       - name: Acquire pinned Amiberry runtime
         run: |
-          mkdir -p "$PWD/amiberry-cache"
+          mkdir -p "$PWD/amiberry-cache" "$PWD/amiberry-acquisition-diagnostics"
+          set -o pipefail
           docker run --rm \
             -v "$PWD/amiberry-cache:/opt/amiga-runtime/amiberry" \
-            amiga-runtime:m2 prepare-amiberry
+            amiga-runtime:m2 prepare-amiberry \
+            2>&1 | tee "$PWD/amiberry-acquisition-diagnostics/prepare-amiberry.log"
+      - name: Upload Amiberry acquisition diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: amiberry-acquisition-diagnostics
+          path: amiberry-acquisition-diagnostics/
+          if-no-files-found: warn
       - name: Verify pinned Amiberry runtime
         run: |
           test -s amiberry-cache/manifest.txt
