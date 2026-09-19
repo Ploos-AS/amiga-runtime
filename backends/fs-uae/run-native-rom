@@ -1,0 +1,37 @@
+#!/bin/sh
+set -eu
+rom=${1:?native ROM required}
+profile=${2:-amiga-ocs-68000-1m}
+EVIDENCE=${AMIGA_RUNTIME_EVIDENCE:-/work/evidence}
+TIMEOUT=${AMIGA_RUNTIME_BOOT_TIMEOUT:-15}
+mkdir -p "$EVIDENCE"
+test -s "$rom"
+test -f "/opt/amiga-runtime/profiles/$profile.conf"
+
+set +e
+timeout "$TIMEOUT" xvfb-run -a -s '-screen 0 1024x768x24' fs-uae   --kickstart_file="$rom"   --amiga_model=A500   --chip_memory=512   --fast_memory=512   --serial_port=serial   --serial_port_device="$EVIDENCE/console.log"   --automatic_input_grab=0   --fullscreen=0   >"$EVIDENCE/fs-uae.stdout.log" 2>"$EVIDENCE/fs-uae.stderr.log"
+rc=$?
+set -e
+case "$rc" in 0|124) started=true ;; *) started=false ;; esac
+python3 - "$EVIDENCE/result.json" "$EVIDENCE/console.log" "$rc" "$profile" "$started" <<'PY'
+import json, pathlib, sys
+out, console, rc, profile, started = sys.argv[1:]
+markers = [
+ "cold-reset-entry-reached",
+ "vector-table-initialized",
+ "memory-discovery-completed",
+ "serial-diagnostics-active",
+ "controlled-halt-or-runtime-handoff",
+]
+p = pathlib.Path(console)
+text = p.read_text(errors="replace") if p.exists() else ""
+found = [m for m in markers if m in text]
+passed = started == "true" and len(found) == len(markers)
+data = {"schema":1,"qualification_level":"Q3","runtime":"free-native",
+        "emulator":"fs-uae","profile":profile,"process_rc":int(rc),
+        "emulator_started":started=="true","required_markers":markers,
+        "observed_markers":found,"guest_boot_proven":passed,
+        "status":"PASS" if passed else "FAIL"}
+pathlib.Path(out).write_text(json.dumps(data, indent=2) + "\n")
+raise SystemExit(0 if passed else 1)
+PY
