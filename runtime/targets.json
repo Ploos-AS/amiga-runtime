@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "targets": [
+    {"id":"amigaos-m68k","arch":"m68k","runtime":"classic","backends":["fs-uae","amiberry","fellowng"]},
+    {"id":"aros-m68k","arch":"m68k","runtime":"aros","backends":["fs-uae","amiberry","fellowng"]},
+    {"id":"aros-x86_64","arch":"x86_64","runtime":"aros","backends":[]},
+    {"id":"aros-ppc","arch":"ppc","runtime":"aros","backends":[]},
+    {"id":"morphos-ppc","arch":"ppc","runtime":"morphos","backends":[]},
+    {"id":"amigaos4-ppc","arch":"ppc","runtime":"amigaos4","backends":[]}
+  ]
+}
