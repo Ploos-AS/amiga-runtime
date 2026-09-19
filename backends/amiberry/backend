@@ -59,7 +59,7 @@ data = {"schema":1,"qualification_level":"Q3","runtime":"aros-m68k","emulator":"
         "profile":profile,"process_rc":int(rc),"emulator_started":started=="true",
         "guest_boot_proven":guest=="true","status":"PASS" if passed else "FAIL",
         "proof":"Amiberry remained alive for the full AROS ISO boot observation window"}
-pathlib.Path(out).write_text(json.dumps(data, indent=2)+"\\n")
+pathlib.Path(out).write_text(json.dumps(data, indent=2) + "\n")
 PY
         [ "$guest" = true ]
         echo 'AROS Amiberry ISO boot observation: PASS'
