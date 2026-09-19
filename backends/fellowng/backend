@@ -1,0 +1,20 @@
+#!/bin/sh
+set -eu
+op=${1:-}
+shift || true
+bin=${FELLOWNG_BIN:-fellowng-sdl}
+case "$op" in
+  probe)
+    if ! command -v "$bin" >/dev/null 2>&1; then
+      printf '{"schema":1,"backend":"fellowng","status":"unavailable","reason":"binary-not-found"}\n'
+      exit 69
+    fi
+    version=$("$bin" --version 2>&1 | head -n1 || true)
+    printf '{"schema":1,"backend":"fellowng","status":"available","version":"%s"}\n' "$(printf '%s' "$version" | sed 's/"/\\\"/g')"
+    ;;
+  run|qualify)
+    echo "FellowNG runtime integration requires the stable M5 automation CLI; probe integration is active." >&2
+    exit 65
+    ;;
+  *) echo "usage: backend-fellowng probe|run|qualify" >&2; exit 64 ;;
+esac
