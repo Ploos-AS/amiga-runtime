@@ -13,8 +13,8 @@
 
 ## M1 — AROS/m68k runtime
 
-- [ ] Pin and verify a redistributable AROS **m68k** runtime source/artifact
-- [ ] Reject i386/x86 AROS artifacts for Amiga qualification
+- [x] Pin and verify a redistributable AROS **m68k** runtime source/artifact
+- [x] Reject i386/x86 AROS artifacts for Amiga qualification
 - [x] Automate AROS/m68k boot under FS-UAE
 - [ ] Provide an m68k ARexx-compatible qualification environment
 - [ ] Run an m68k ARexx smoke test inside the guest
@@ -46,9 +46,9 @@
 
 **Backend policy:** `amiga-runtime` must support multiple independent Amiga emulators. FS-UAE remains the reference backend; Amiberry and FellowNG are first-class backend targets. A backend may be marked `experimental` until it provides deterministic automated execution, but it must use the same runtime/profile/evidence contract.
 
-- [ ] Define emulator-neutral backend contract
-- [ ] Keep FS-UAE as the first/reference backend
-- [ ] Add Amiberry backend
+- [x] Define emulator-neutral backend contract
+- [x] Keep FS-UAE as the first/reference backend
+- [x] Add Amiberry backend
 - [ ] Add `--emulator fs-uae|amiberry|fellowng` selection
 - [ ] Add `compare --emulators ...` qualification mode
 - [ ] Run identical **m68k** runtime, machine profile, ARexx test and payload across selected emulators
