@@ -15,6 +15,7 @@ RUN apt-get update \
        libportmidi0 \
        libenet7 \
        libpcap0.8 \
+       libsdl3-image0 \
        7zip \
        python3 \
        unzip \
