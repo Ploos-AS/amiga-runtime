@@ -15,8 +15,11 @@ case "$op" in
     run-aros)
         exec run-aros-fs-uae "$@"
         ;;
+    run-native-rom)
+        exec /opt/amiga-runtime/backends/fs-uae/run-native-rom "$@"
+        ;;
     *)
-        echo "usage: backend-fs-uae probe|qualify-aros-boot|run-aros ..." >&2
+        echo "usage: backend-fs-uae probe|qualify-aros-boot|run-aros|run-native-rom ..." >&2
         exit 64
         ;;
 esac
