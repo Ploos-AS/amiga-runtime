@@ -13,6 +13,7 @@ usage:
   amiga-runtime qualify-aros-boot [PROFILE]
   amiga-runtime qualify-aros-arexx
   amiga-runtime backends
+  amiga-runtime targets
   amiga-runtime test PROGRAM [--runtime aros|fs-uae|amiberry|fellowng] [--profile PROFILE]
 EOF
 }
@@ -31,7 +32,10 @@ case "${1:-}" in
         echo 'amiga-runtime M1 harness self-test: PASS'
         ;;
     backends)
-        printf '%s\n' 'fs-uae stable' 'amiberry adapter' 'fellowng experimental'
+        printf '%s\n' 'fs-uae stable' 'amiberry adapter' 'fellowng integration'
+        ;;
+    targets)
+        jq -r '.targets[] | [.id,.arch,.runtime,((.backends // [])|join(","))] | @tsv' /opt/amiga-runtime/runtime/targets.json
         ;;
     profiles)
         find "$PROFILES" -maxdepth 1 -type f -name '*.conf' -printf '%f\n' | sed 's/\.conf$//' | sort
@@ -71,8 +75,7 @@ case "${1:-}" in
                 exec backend-amiberry "$shift_backend" "$program" "$profile"
                 ;;
             fellowng)
-                echo "runtime backend 'fellowng' is declared by the contract but is not yet available in this image" >&2
-                exit 65
+                exec backend-fellowng run "$program" "$profile"
                 ;;
             *) echo "unsupported runtime backend: $runtime" >&2; exit 65 ;;
         esac
