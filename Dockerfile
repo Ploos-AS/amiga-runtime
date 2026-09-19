@@ -14,6 +14,7 @@ RUN apt-get update \
        libserialport0 \
        libportmidi0 \
        libenet7 \
+       libpcap0.8 \
        7zip \
        python3 \
        unzip \
