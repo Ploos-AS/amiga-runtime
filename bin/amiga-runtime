@@ -14,7 +14,7 @@ usage:
   amiga-runtime qualify-aros-arexx
   amiga-runtime backends
   amiga-runtime targets
-  amiga-runtime test PROGRAM [--runtime aros|fs-uae|amiberry|fellowng] [--profile PROFILE]
+  amiga-runtime test PROGRAM [--runtime aros|fs-uae|amiberry|fellowng|free-native] [--profile PROFILE]
 EOF
 }
 
@@ -70,6 +70,7 @@ case "${1:-}" in
         done
         case "$runtime" in
             aros|fs-uae) exec run-aros "$program" "$profile" ;;
+            free-native) exec backend-fs-uae run-native-rom "$program" "$profile" ;;
             amiberry)
                 shift_backend=run-aros
                 exec backend-amiberry "$shift_backend" "$program" "$profile"
