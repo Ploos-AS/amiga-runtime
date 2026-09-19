@@ -24,6 +24,16 @@
 - [ ] Emit PASS/FAIL JSON and JUnit evidence
 - [x] Qualify the AROS/m68k FS-UAE boot gate on GitHub Actions\n- [ ] Qualify m68k ARexx guest execution on GitHub Actions
 
+### Q3 core infrastructure gate
+
+- [x] Qualify redistributable AROS/m68k boot with FS-UAE
+- [x] Qualify redistributable AROS/m68k boot with Amiberry
+- [x] Emit an aggregate machine-readable Q3 core result
+- [x] Keep ARexx qualification optional and non-blocking for core infrastructure
+- [x] Enforce the Q3 core gate on GitHub Actions
+
+**Status:** Q3 core emulator/runtime infrastructure is qualified. ARexx remains a separate optional guest-capability qualification and does not block projects from consuming `amiga-runtime`.
+
 ## M2 — Project integration
 
 - [ ] Reusable GitHub Actions workflow
