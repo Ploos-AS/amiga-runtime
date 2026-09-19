@@ -21,8 +21,13 @@ test -f "$AROS_EXT" || { echo "AROS extended ROM not prepared: $AROS_EXT" >&2; e
 cp "$program" "$EVIDENCE/payload"
 sha256sum "$program" > "$EVIDENCE/payload.sha256"
 
+XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/tmp/amiga-runtime-xdg}
+mkdir -p "$XDG_RUNTIME_DIR"
+chmod 0700 "$XDG_RUNTIME_DIR"
+export XDG_RUNTIME_DIR
+
 set +e
-timeout "$TIMEOUT" fs-uae "$PROFILES/$profile.conf" \
+timeout "$TIMEOUT" xvfb-run -a fs-uae "$PROFILES/$profile.conf" \
     --kickstart-file="$AROS_ROM" \
     --kickstart-ext-file="$AROS_EXT" \
     --cdrom-drive-0="$AROS_ISO" \
