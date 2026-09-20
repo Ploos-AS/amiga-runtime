@@ -10,7 +10,7 @@ usage:
   amiga-runtime profiles
   amiga-runtime prepare-aros
   amiga-runtime prepare-amiberry
-  amiga-runtime qualify-aros-boot [PROFILE]
+  amiga-runtime qualify-aros-boot [PROFILE] [--emulator fs-uae|amiberry|fellowng]
   amiga-runtime qualify-aros-arexx
   amiga-runtime backends
   amiga-runtime targets
@@ -48,7 +48,21 @@ case "${1:-}" in
         ;;
     qualify-aros-boot)
         shift
-        exec qualify-aros-boot "${1:-a1200-020}"
+        profile=a1200-020-aros
+        emulator=fs-uae
+        if [ "$#" -gt 0 ] && [ "${1#--}" = "$1" ]; then profile=$1; shift; fi
+        while [ "$#" -gt 0 ]; do
+            case "$1" in
+                --emulator) emulator=${2:?missing emulator}; shift 2 ;;
+                *) echo "unknown argument: $1" >&2; exit 64 ;;
+            esac
+        done
+        case "$emulator" in
+            fs-uae) exec backend-fs-uae qualify-aros-boot "$profile" ;;
+            amiberry) exec backend-amiberry qualify-aros-boot "$profile" ;;
+            fellowng) exec backend-fellowng qualify aros "$profile" ;;
+            *) echo "unsupported emulator: $emulator" >&2; exit 65 ;;
+        esac
         ;;
     qualify-aros-arexx)
         shift
