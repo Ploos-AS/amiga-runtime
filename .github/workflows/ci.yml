@@ -156,6 +156,33 @@ jobs:
             amiga-runtime:m2 qualify-aros-boot a1200-020-aros
           jq -e '.status == "PASS" and .emulator == "fs-uae" and .guest_boot_proven == true' runtime-evidence/result.json
           test "$(cat runtime-evidence/AMIGA_RUNTIME_BOOT_OK)" = "AMIGA_RUNTIME_BOOT_OK"
+      - name: Verify emulator-neutral qualification dispatch
+        run: |
+          mkdir -p "$PWD/dispatch-fsuae" "$PWD/dispatch-amiberry" "$PWD/dispatch-fellowng"
+          docker run --rm \
+            -e AMIGA_RUNTIME_BOOT_TIMEOUT=30 \
+            -v "$PWD/aros-cache:/opt/amiga-runtime/aros:ro" \
+            -v "$PWD/dispatch-fsuae:/work/evidence" \
+            amiga-runtime:m2 qualify-aros-boot a1200-020-aros --emulator fs-uae
+          jq -e '.status == "PASS" and .emulator == "fs-uae"' "$PWD/dispatch-fsuae/result.json"
+
+          docker run --rm \
+            -e AMIGA_RUNTIME_BOOT_TIMEOUT=30 \
+            -v "$PWD/aros-cache:/opt/amiga-runtime/aros:ro" \
+            -v "$PWD/amiberry-cache:/opt/amiga-runtime/amiberry:ro" \
+            -v "$PWD/dispatch-amiberry:/work/evidence" \
+            amiga-runtime:m2 qualify-aros-boot a1200-020-aros --emulator amiberry
+          jq -e '.status == "PASS" and .emulator == "amiberry"' "$PWD/dispatch-amiberry/result.json"
+
+          docker run --rm \
+            -e FELLOWNG_BIN=/opt/fellowng/fellowng-sdl \
+            -v "$PWD/fellowng-cache:/opt/fellowng:ro" \
+            -v "$PWD/aros-cache:/opt/amiga-runtime/aros:ro" \
+            -v "$PWD/dispatch-fellowng:/work/evidence" \
+            amiga-runtime:m2 qualify-aros-boot a1200-020-aros --emulator fellowng
+          grep -q '"schema":"fellowng.runtime-result.v1"' "$PWD/dispatch-fellowng/fellowng-runtime.log"
+          grep -q '"status":"pass"' "$PWD/dispatch-fellowng/fellowng-runtime.log"
+
       - name: Qualify Q3 core infrastructure
         run: |
           python3 tools/qualify-q3-core.py "$PWD"
@@ -179,6 +206,9 @@ jobs:
             fellowng-evidence/
             fellowng-runtime-evidence/
             fellowng-source-revision.txt
+            dispatch-fsuae/
+            dispatch-amiberry/
+            dispatch-fellowng/
             q3-core-evidence/
             amiberry-cache/manifest.txt
             aros-cache/manifest.txt
