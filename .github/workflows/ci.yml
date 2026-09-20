@@ -139,7 +139,6 @@ jobs:
             --entrypoint backend-fellowng \
             -e FELLOWNG_BIN=/opt/fellowng/fellowng-sdl \
             -e FELLOWNG_ROM=/opt/amiga-runtime/aros/aros-rom.bin \
-            -e FELLOWNG_BOOT_ADF=/opt/amiga-runtime/aros/aros.iso \
             -v "$PWD/fellowng-cache:/opt/fellowng:ro" \
             -v "$PWD/aros-cache:/opt/amiga-runtime/aros:ro" \
             -v "$PWD/fellowng-runtime-evidence:/work/evidence" \
