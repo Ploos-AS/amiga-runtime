@@ -1,20 +1,63 @@
 #!/bin/sh
 set -eu
+
 op=${1:-}
 shift || true
 bin=${FELLOWNG_BIN:-fellowng-sdl}
-case "$op" in
-  probe)
+
+json_escape() {
+    sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
+probe() {
     if ! command -v "$bin" >/dev/null 2>&1; then
-      printf '{"schema":1,"backend":"fellowng","status":"unavailable","reason":"binary-not-found"}\n'
-      exit 69
+        printf '{"schema":1,"backend":"fellowng","status":"unavailable","reason":"binary-not-found"}\n'
+        exit 69
     fi
     version=$("$bin" --version 2>&1 | head -n1 || true)
-    printf '{"schema":1,"backend":"fellowng","status":"available","version":"%s"}\n' "$(printf '%s' "$version" | sed 's/"/\\\"/g')"
-    ;;
+    printf '{"schema":1,"backend":"fellowng","status":"available","version":"%s","automation":"fellowng.runtime-result.v1"}\n' "$(printf '%s' "$version" | json_escape)"
+}
+
+run_aros() {
+    profile=${1:-a1200-020}
+    max_pumps=${FELLOWNG_MAX_PUMPS:-16384}
+    assets=${FELLOWNG_AROS_ASSETS:-/work/runtime/aros}
+    evidence=${AMIGA_RUNTIME_EVIDENCE:-/work/evidence}
+    mkdir -p "$evidence"
+
+    rom=${FELLOWNG_ROM:-}
+    adf=${FELLOWNG_BOOT_ADF:-}
+    live=${FELLOWNG_LIVE_ROOT:-}
+    [ -n "$rom" ] || { [ -s "$assets/rom-path.txt" ] && rom=$(cat "$assets/rom-path.txt"); }
+    [ -n "$adf" ] || { [ -s "$assets/boot-adf-path.txt" ] && adf=$(cat "$assets/boot-adf-path.txt"); }
+    [ -n "$live" ] || { [ -s "$assets/live-root-path.txt" ] && live=$(cat "$assets/live-root-path.txt"); }
+
+    [ -n "$rom" ] && [ -f "$rom" ] || { echo "FellowNG AROS ROM unavailable" >&2; exit 66; }
+    [ -n "$adf" ] && [ -f "$adf" ] || { echo "FellowNG AROS boot ADF unavailable" >&2; exit 66; }
+
+    mode=runtime-boot-deep
+    case "$profile" in
+        a1200-020|a1200-020-aros) cpu=68020 ;;
+        a1200-030) cpu=68030 ;;
+        *) echo "FellowNG backend does not yet map profile: $profile" >&2; exit 65 ;;
+    esac
+
+    set -- "$bin" --runtime-boot "$mode" --result-json --max-pumps "$max_pumps" --cpu "$cpu" --kickstart "$rom" --floppy "$adf"
+    if [ -n "$live" ] && [ -d "$live" ]; then
+        mode=runtime-boot-desktop
+        set -- "$bin" --runtime-boot "$mode" --result-json --max-pumps "$max_pumps" --cpu "$cpu" --kickstart "$rom" --floppy "$adf" --filesystem "ro,AROS Live CD:$live"
+    fi
+    SDL_VIDEODRIVER=${SDL_VIDEODRIVER:-dummy} SDL_AUDIODRIVER=${SDL_AUDIODRIVER:-dummy} "$@" | tee "$evidence/fellowng-runtime.log"
+}
+
+case "$op" in
+  probe) probe ;;
   run|qualify)
-    echo "FellowNG runtime integration requires the stable M5 automation CLI; probe integration is active." >&2
-    exit 65
+    sub=${1:-aros}; shift || true
+    case "$sub" in
+      aros) run_aros "$@" ;;
+      *) echo "usage: backend-fellowng $op aros [PROFILE]" >&2; exit 64 ;;
+    esac
     ;;
   *) echo "usage: backend-fellowng probe|run|qualify" >&2; exit 64 ;;
 esac
