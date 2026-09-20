@@ -21,13 +21,16 @@ probe() {
 run_aros() {
     profile=${1:-a1200-020}
     max_pumps=${FELLOWNG_MAX_PUMPS:-16384}
-    assets=${FELLOWNG_AROS_ASSETS:-/work/runtime/aros}
+    assets=${FELLOWNG_AROS_ASSETS:-/opt/amiga-runtime/aros}
     evidence=${AMIGA_RUNTIME_EVIDENCE:-/work/evidence}
     mkdir -p "$evidence"
 
     rom=${FELLOWNG_ROM:-}
     adf=${FELLOWNG_BOOT_ADF:-}
     live=${FELLOWNG_LIVE_ROOT:-}
+    if [ -z "$rom" ] && [ -s "$assets/aros-rom.bin" ]; then rom="$assets/aros-rom.bin"; fi
+    if [ -z "$adf" ] && [ -s "$assets/Emergency-Boot.adf" ]; then adf="$assets/Emergency-Boot.adf"; fi
+    if [ -z "$live" ] && [ -d "$assets/iso-root" ]; then live="$assets/iso-root"; fi
     [ -n "$rom" ] || { [ -s "$assets/rom-path.txt" ] && rom=$(cat "$assets/rom-path.txt"); }
     [ -n "$adf" ] || { [ -s "$assets/boot-adf-path.txt" ] && adf=$(cat "$assets/boot-adf-path.txt"); }
     [ -n "$live" ] || { [ -s "$assets/live-root-path.txt" ] && live=$(cat "$assets/live-root-path.txt"); }
