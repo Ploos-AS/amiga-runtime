@@ -105,6 +105,7 @@ jobs:
       - name: Build FellowNG portable SDL frontend
         run: |
           git clone --depth 1 https://github.com/Ploos-AS/FellowNG.git "$PWD/fellowng-src"
+          git -C "$PWD/fellowng-src" rev-parse HEAD | tee "$PWD/fellowng-source-revision.txt"
           docker run --rm \
             -v "$PWD/fellowng-src:/src" \
             -w /src \
@@ -178,6 +179,7 @@ jobs:
             amiberry-runtime-evidence/
             fellowng-evidence/
             fellowng-runtime-evidence/
+            fellowng-source-revision.txt
             q3-core-evidence/
             amiberry-cache/manifest.txt
             aros-cache/manifest.txt
