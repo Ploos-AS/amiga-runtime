@@ -19,37 +19,44 @@ probe() {
 }
 
 run_aros() {
-    profile=${1:-a1200-020}
+    profile=${1:-a1200-020-aros}
     max_pumps=${FELLOWNG_MAX_PUMPS:-16384}
     assets=${FELLOWNG_AROS_ASSETS:-/opt/amiga-runtime/aros}
     evidence=${AMIGA_RUNTIME_EVIDENCE:-/work/evidence}
     mkdir -p "$evidence"
 
-    rom=${FELLOWNG_ROM:-}
+    rom=${FELLOWNG_ROM:-$assets/aros-rom.bin}
+    ext=${FELLOWNG_EXT_ROM:-$assets/aros-ext.bin}
     adf=${FELLOWNG_BOOT_ADF:-}
     live=${FELLOWNG_LIVE_ROOT:-}
-    if [ -z "$rom" ] && [ -s "$assets/aros-rom.bin" ]; then rom="$assets/aros-rom.bin"; fi
-    if [ -z "$adf" ] && [ -s "$assets/Emergency-Boot.adf" ]; then adf="$assets/Emergency-Boot.adf"; fi
-    if [ -z "$live" ] && [ -d "$assets/iso-root" ]; then live="$assets/iso-root"; fi
-    [ -n "$rom" ] || { [ -s "$assets/rom-path.txt" ] && rom=$(cat "$assets/rom-path.txt"); }
-    [ -n "$adf" ] || { [ -s "$assets/boot-adf-path.txt" ] && adf=$(cat "$assets/boot-adf-path.txt"); }
-    [ -n "$live" ] || { [ -s "$assets/live-root-path.txt" ] && live=$(cat "$assets/live-root-path.txt"); }
+    [ -s "$rom" ] || { echo "FellowNG AROS ROM unavailable" >&2; exit 66; }
 
-    [ -n "$rom" ] && [ -f "$rom" ] || { echo "FellowNG AROS ROM unavailable" >&2; exit 66; }
-    [ -n "$adf" ] && [ -f "$adf" ] || { echo "FellowNG AROS boot ADF unavailable" >&2; exit 66; }
-
-    mode=runtime-boot-deep
     case "$profile" in
         a1200-020|a1200-020-aros) cpu=68020 ;;
         a1200-030) cpu=68030 ;;
         *) echo "FellowNG backend does not yet map profile: $profile" >&2; exit 65 ;;
     esac
 
-    set -- "$bin" --runtime-boot "$mode" --result-json --max-pumps "$max_pumps" --cpu "$cpu" --kickstart "$rom" --floppy "$adf"
-    if [ -n "$live" ] && [ -d "$live" ]; then
-        mode=runtime-boot-desktop
-        set -- "$bin" --runtime-boot "$mode" --result-json --max-pumps "$max_pumps" --cpu "$cpu" --kickstart "$rom" --floppy "$adf" --filesystem "ro,AROS Live CD:$live"
+    mode=runtime-boot-deep
+    set -- "$bin" "--$mode" --result-json --max-pumps "$max_pumps" \
+        -s "kickstart_rom_file=$rom" -s "cpu_type=$cpu"
+    if [ -s "$ext" ]; then
+        set -- "$@" -s "kickstart_rom_file_ext=$ext"
     fi
+
+    # Desktop qualification is enabled only when the AROS boot floppy and
+    # extracted Live CD root are explicitly available. The prepared
+    # amiga-runtime aros.iso is a CD image, not a floppy image.
+    if [ -n "$adf" ] && [ -s "$adf" ] && [ -n "$live" ] && [ -d "$live" ]; then
+        mode=runtime-boot-desktop
+        set -- "$bin" "--$mode" --result-json --max-pumps "$max_pumps" \
+            -s "kickstart_rom_file=$rom" -s "cpu_type=$cpu"
+        if [ -s "$ext" ]; then set -- "$@" -s "kickstart_rom_file_ext=$ext"; fi
+        set -- "$@" -s "floppy0=$adf" -s "floppy0_enabled=yes" \
+            -s "floppy0_readonly=yes" -s "autoconfig=yes" \
+            -s "filesystem=ro,AROS Live CD:$live"
+    fi
+
     SDL_VIDEODRIVER=${SDL_VIDEODRIVER:-dummy} SDL_AUDIODRIVER=${SDL_AUDIODRIVER:-dummy} "$@" | tee "$evidence/fellowng-runtime.log"
 }
 
