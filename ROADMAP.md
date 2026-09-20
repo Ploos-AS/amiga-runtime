@@ -66,14 +66,14 @@
 - [ ] Never substitute AROS/i386 qualification for an Amiga/m68k emulator qualification
 - [ ] Classify differing results as `EMULATOR_DIVERGENCE`
 - [ ] Preserve per-emulator logs, screenshots, serial output, ARexx output, JSON and JUnit evidence
-- [ ] Add FellowNG backend adapter and integration tests
-- [ ] Build/use FellowNG portable CLI path when FellowNG supports deterministic automated qualification
-- [ ] Keep FellowNG backend explicitly `experimental` until deterministic automated qualification is available
+- [x] Add FellowNG backend adapter and integration tests
+- [x] Build/use FellowNG portable CLI path with deterministic `fellowng.runtime-result.v1` qualification
+- [x] Keep FellowNG backend explicitly `experimental` until deterministic automated qualification is available — deterministic CI qualification is now available
 - [ ] Keep FellowNG experimental until its regression suite is sufficiently mature
 - [ ] Feed reproducible FS-UAE/Amiberry/FellowNG divergences into FellowNG regression tests
 - [ ] A500 / 68000
 - [ ] A500+ / 68000
-- [ ] A1200 / 68020
+- [x] A1200 / 68020 — FellowNG AROS/m68k deterministic CI baseline
 - [ ] A1200 / 68030
 - [ ] A4000-class profile
 
