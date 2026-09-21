@@ -63,6 +63,8 @@
 - [x] Add `compare --emulators ...` qualification mode
 - [ ] Run identical **m68k** runtime, machine profile, ARexx test and payload across selected emulators
 - [ ] Require m68k ARexx qualification on each supported emulator backend
+  - [ ] Build/package AROS contrib Regina + RexxMast for the redistributable amiga-m68k CI guest (upstream AROS #866)
+  - [ ] Run the same `runtime/arexx/smoke.rexx` through Regina/RexxMast on FS-UAE, Amiberry and FellowNG
 - [ ] Never substitute AROS/i386 qualification for an Amiga/m68k emulator qualification
 - [x] Classify differing results as `EMULATOR_DIVERGENCE`
 - [ ] Preserve per-emulator logs, screenshots, serial output, ARexx output, JSON and JUnit evidence
