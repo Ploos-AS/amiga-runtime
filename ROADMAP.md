@@ -59,7 +59,7 @@
 - [x] Define emulator-neutral backend contract
 - [x] Keep FS-UAE as the first/reference backend
 - [x] Add Amiberry backend
-- [ ] Add `--emulator fs-uae|amiberry|fellowng` selection
+- [x] Add `--emulator fs-uae|amiberry|fellowng` selection
 - [ ] Add `compare --emulators ...` qualification mode
 - [ ] Run identical **m68k** runtime, machine profile, ARexx test and payload across selected emulators
 - [ ] Require m68k ARexx qualification on each supported emulator backend
