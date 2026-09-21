@@ -1,0 +1,39 @@
+#!/bin/sh
+set -eu
+
+AROS_REPO=${AROS_REPO:-https://github.com/aros-development-team/AROS.git}
+AROS_REV=${AROS_REV:-6a327488b5efcdb33aaeba23295705d63ee90d57}
+CONTRIB_REPO=${AROS_CONTRIB_REPO:-https://github.com/aros-development-team/contrib.git}
+CONTRIB_REV=${AROS_CONTRIB_REV:-1f7b43ff6ba561a912affafc0164f518e32d7a86}
+WORK=${AROS_REGINA_BUILD_DIR:-/tmp/aros-regina-build}
+OUT=${AROS_REGINA_OUT:-/work/aros-regina-out}
+JOBS=${JOBS:-2}
+
+rm -rf "$WORK"
+mkdir -p "$WORK" "$OUT"
+git clone --filter=blob:none "$AROS_REPO" "$WORK/AROS"
+git -C "$WORK/AROS" checkout --detach "$AROS_REV"
+git clone --filter=blob:none "$CONTRIB_REPO" "$WORK/AROS/contrib"
+git -C "$WORK/AROS/contrib" checkout --detach "$CONTRIB_REV"
+
+mkdir -p "$WORK/toolchain" "$WORK/toolchain-build"
+cd "$WORK/toolchain-build"
+"$WORK/AROS/configure" --target=amiga-m68k --with-aros-toolchain-install="$WORK/toolchain"
+make -j"$JOBS" crosstools
+
+mkdir -p "$WORK/build"
+cd "$WORK/build"
+"$WORK/AROS/configure" --target=amiga-m68k --with-aros-toolchain="$WORK/toolchain"
+make -j"$JOBS" tools mmake
+make -j"$JOBS" contrib-regina-module contrib-regina-rexxmast-arosc
+
+find "$WORK/build/bin/amiga-m68k/AROS" -type f \( -name 'regina.library' -o -name 'RexxMast' \) -print -exec cp {} "$OUT/" \;
+
+test -s "$OUT/regina.library"
+test -s "$OUT/RexxMast"
+sha256sum "$OUT/regina.library" "$OUT/RexxMast" > "$OUT/SHA256SUMS"
+{
+  echo "aros_revision=$AROS_REV"
+  echo "contrib_revision=$CONTRIB_REV"
+  echo "target=amiga-m68k"
+} > "$OUT/provenance.env"
