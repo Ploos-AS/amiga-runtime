@@ -60,11 +60,11 @@
 - [x] Keep FS-UAE as the first/reference backend
 - [x] Add Amiberry backend
 - [x] Add `--emulator fs-uae|amiberry|fellowng` selection
-- [ ] Add `compare --emulators ...` qualification mode
+- [x] Add `compare --emulators ...` qualification mode
 - [ ] Run identical **m68k** runtime, machine profile, ARexx test and payload across selected emulators
 - [ ] Require m68k ARexx qualification on each supported emulator backend
 - [ ] Never substitute AROS/i386 qualification for an Amiga/m68k emulator qualification
-- [ ] Classify differing results as `EMULATOR_DIVERGENCE`
+- [x] Classify differing results as `EMULATOR_DIVERGENCE`
 - [ ] Preserve per-emulator logs, screenshots, serial output, ARexx output, JSON and JUnit evidence
 - [x] Add FellowNG backend adapter and integration tests
 - [x] Build/use FellowNG portable CLI path with deterministic `fellowng.runtime-result.v1` qualification
