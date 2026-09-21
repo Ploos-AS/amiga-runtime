@@ -76,7 +76,7 @@ for line in reversed(lines):
     if isinstance(value, dict) and value.get("schema") == "fellowng.runtime-result.v1":
         raw = value
         break
-passed = bool(raw and raw.get("status") == "PASS")
+passed = bool(raw and str(raw.get("status", "")).upper() == "PASS")
 data = {
     "schema": 1,
     "qualification_level": "Q3",
