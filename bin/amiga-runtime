@@ -13,6 +13,7 @@ usage:
   amiga-runtime qualify-aros-boot [PROFILE] [--emulator fs-uae|amiberry|fellowng]
   amiga-runtime qualify-aros-arexx
   amiga-runtime backends
+  amiga-runtime compare [PROFILE] --emulators LIST
   amiga-runtime targets
   amiga-runtime test PROGRAM [--runtime aros|fs-uae|amiberry|fellowng|free-native] [--profile PROFILE]
 EOF
@@ -67,6 +68,47 @@ case "${1:-}" in
     qualify-aros-arexx)
         shift
         exec qualify-aros-arexx "$@"
+        ;;
+    compare)
+        shift
+        profile=a1200-020-aros
+        emulators=fs-uae,amiberry,fellowng
+        if [ "$#" -gt 0 ] && [ "${1#--}" = "$1" ]; then profile=$1; shift; fi
+        while [ "$#" -gt 0 ]; do
+            case "$1" in
+                --emulators) emulators=${2:?missing emulator list}; shift 2 ;;
+                *) echo "unknown argument: $1" >&2; exit 64 ;;
+            esac
+        done
+        root=${AMIGA_RUNTIME_EVIDENCE:-/work/evidence}
+        mkdir -p "$root"
+        summary="$root/compare.json"
+        printf '{"schema":1,"profile":"%s","results":[' "$profile" >"$summary"
+        first=true
+        oldifs=$IFS; IFS=,
+        for emulator in $emulators; do
+            IFS=$oldifs
+            case "$emulator" in fs-uae|amiberry|fellowng) ;; *) echo "unsupported emulator: $emulator" >&2; exit 65 ;; esac
+            edir="$root/$emulator"; mkdir -p "$edir"
+            set +e
+            AMIGA_RUNTIME_EVIDENCE="$edir" "$0" qualify-aros-boot "$profile" --emulator "$emulator"
+            rc=$?
+            set -e
+            [ "$first" = true ] || printf ',' >>"$summary"; first=false
+            printf '{"emulator":"%s","process_rc":%s,"status":"%s"}' "$emulator" "$rc" "$([ "$rc" -eq 0 ] && printf PASS || printf FAIL)" >>"$summary"
+            IFS=,
+        done
+        IFS=$oldifs
+        printf ']}' >>"$summary"; printf '\n' >>"$summary"
+        python3 - "$summary" <<'PY'
+import json, pathlib, sys
+p=pathlib.Path(sys.argv[1]); d=json.loads(p.read_text())
+states={x["status"] for x in d["results"]}
+d["status"]="PASS" if states=={"PASS"} else ("FAIL" if states=={"FAIL"} else "EMULATOR_DIVERGENCE")
+p.write_text(json.dumps(d,indent=2)+"\n")
+print(json.dumps(d,separators=(",",":")))
+raise SystemExit(0 if d["status"]=="PASS" else 1)
+PY
         ;;
     test)
         shift
