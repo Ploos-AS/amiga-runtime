@@ -66,6 +66,7 @@
 - [ ] Never substitute AROS/i386 qualification for an Amiga/m68k emulator qualification
 - [x] Classify differing results as `EMULATOR_DIVERGENCE`
 - [ ] Preserve per-emulator logs, screenshots, serial output, ARexx output, JSON and JUnit evidence
+  - [x] Preserve per-emulator evidence directories and machine-readable backend JSON in compare mode
 - [x] Add FellowNG backend adapter and integration tests
 - [x] Build/use FellowNG portable CLI path with deterministic `fellowng.runtime-result.v1` qualification
 - [x] Keep FellowNG backend explicitly `experimental` until deterministic automated qualification is available — deterministic CI qualification is now available
