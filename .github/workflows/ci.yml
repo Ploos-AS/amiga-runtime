@@ -53,7 +53,10 @@ jobs:
           test -s aros-cache/arexx-components.env
           grep -qx 'rexxsyslib.library=present' aros-cache/arexx-components.env
           grep -qx 'RX=present' aros-cache/arexx-components.env
-          grep -Eq '^RexxMast=(present|missing)
+          grep -Eq '^RexxMast=(present|missing)$' aros-cache/arexx-components.env
+          grep -Eq '^regina.library=(present|missing)$' aros-cache/arexx-components.env
+          cat aros-cache/arexx-components.env
+          grep -qx 'acquisition=official-nightly-index' aros-cache/manifest.txt
           grep -qx 'target=amiga-m68k' aros-cache/manifest.txt
           cat aros-cache/manifest.txt
       - name: Cache pinned Amiberry runtime
