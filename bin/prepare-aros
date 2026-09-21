@@ -105,6 +105,27 @@ printf '%s\n' "$system_startup" > "$DEST/system-startup-sequence-path.txt"
 test -s "$DEST/system-root/Libs/rexxsyslib.library" || { echo 'AROS m68k rexxsyslib.library not found' >&2; exit 66; }
 test -s "$DEST/system-root/Rexxc/RX" || { echo 'AROS m68k RX command not found' >&2; exit 66; }
 
+# Inventory the redistributable ARexx/Regina pieces separately. RexxMast and
+# regina.library currently come from AROS contrib and may be absent from the
+# official amiga-m68k boot ISO (AROS #866). Absence is recorded, not treated as
+# a boot-runtime preparation failure.
+{
+    for spec in \
+        "rexxsyslib.library:$DEST/system-root/Libs/rexxsyslib.library" \
+        "RX:$DEST/system-root/Rexxc/RX" \
+        "RexxMast:$DEST/system-root/C/RexxMast" \
+        "regina.library:$DEST/system-root/Libs/regina.library"
+    do
+        name=${spec%%:*}
+        path=${spec#*:}
+        if [ -s "$path" ]; then
+            printf '%s=present\n' "$name"
+        else
+            printf '%s=missing\n' "$name"
+        fi
+    done
+} > "$DEST/arexx-components.env"
+
 # Preserve a deterministic inventory of the 7z-extracted filesystem so CI
 # failures can be diagnosed from artifacts instead of inferred from layout.
 (
