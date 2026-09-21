@@ -199,6 +199,18 @@ jobs:
             and ([.results[].emulator] | sort) == ["amiberry","fellowng","fs-uae"]
             and all(.results[]; (.evidence_dir | type) == "string")
             and all(.results[]; has("result_json"))' "$PWD/compare-evidence/compare.json"
+          jq -e '
+            [.results[].result_json] as $r
+            | all($r[];
+                .schema == 1
+                and .qualification_level == "Q3"
+                and .runtime == "aros-m68k"
+                and (.emulator | type) == "string"
+                and .profile == "a1200-020-aros"
+                and (.guest_boot_proven | type) == "boolean"
+                and (.status == "PASS" or .status == "FAIL")
+                and (.proof | type) == "string")
+          ' "$PWD/compare-evidence/compare.json"
 
       - name: Qualify Q3 core infrastructure
         run: |
