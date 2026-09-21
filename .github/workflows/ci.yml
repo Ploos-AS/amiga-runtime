@@ -183,6 +183,19 @@ jobs:
           grep -q '"schema":"fellowng.runtime-result.v1"' "$PWD/dispatch-fellowng/fellowng-runtime.log"
           grep -q '"status":"pass"' "$PWD/dispatch-fellowng/fellowng-runtime.log"
 
+      - name: Compare all qualified emulator backends
+        run: |
+          mkdir -p "$PWD/compare-evidence"
+          docker run --rm \
+            -e AMIGA_RUNTIME_BOOT_TIMEOUT=30 \
+            -e FELLOWNG_BIN=/opt/fellowng/fellowng-sdl \
+            -v "$PWD/aros-cache:/opt/amiga-runtime/aros:ro" \
+            -v "$PWD/amiberry-cache:/opt/amiga-runtime/amiberry:ro" \
+            -v "$PWD/fellowng-cache:/opt/fellowng:ro" \
+            -v "$PWD/compare-evidence:/work/evidence" \
+            amiga-runtime:m2 compare a1200-020-aros --emulators fs-uae,amiberry,fellowng
+          jq -e '.status == "PASS" and (.results | length) == 3 and ([.results[].emulator] | sort) == ["amiberry","fellowng","fs-uae"]' "$PWD/compare-evidence/compare.json"
+
       - name: Qualify Q3 core infrastructure
         run: |
           python3 tools/qualify-q3-core.py "$PWD"
@@ -209,6 +222,7 @@ jobs:
             dispatch-fsuae/
             dispatch-amiberry/
             dispatch-fellowng/
+            compare-evidence/
             q3-core-evidence/
             amiberry-cache/manifest.txt
             aros-cache/manifest.txt
