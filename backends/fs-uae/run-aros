@@ -6,41 +6,80 @@ profile=${2:?usage: run-aros PROGRAM PROFILE}
 PROFILES=${AMIGA_RUNTIME_PROFILES:-/opt/amiga-runtime/profiles}
 AROS_DIR=${AROS_RUNTIME_DIR:-/opt/amiga-runtime/aros}
 AROS_ISO=${AROS_BOOT_IMAGE_PREPARED:-"${AROS_DIR}/aros.iso"}
-AROS_ROM=${AROS_ROM_PREPARED:-"${AROS_DIR}/aros-rom.bin"}
-AROS_EXT=${AROS_EXT_PREPARED:-"${AROS_DIR}/aros-ext.bin"}
 EVIDENCE=${AMIGA_RUNTIME_EVIDENCE:-/work/evidence}
 TIMEOUT=${AMIGA_RUNTIME_TIMEOUT:-60}
+GENERATOR=${AMIGA_RUNTIME_FS_UAE_GENERATOR:-/opt/amiga-runtime/lib/generate-fs-uae-config.py}
+MARKER=AMIGA_RUNTIME_PAYLOAD_OK
 
 mkdir -p "$EVIDENCE"
+rm -f "$EVIDENCE/$MARKER" "$EVIDENCE/guest-rc.txt"
 test -f "$program" || { echo "program not found: $program" >&2; exit 66; }
 test -f "$PROFILES/$profile.conf" || { echo "unknown profile: $profile" >&2; exit 66; }
-test -f "$AROS_ISO" || { echo "AROS ISO not prepared: $AROS_ISO" >&2; exit 69; }
-test -f "$AROS_ROM" || { echo "AROS ROM not prepared: $AROS_ROM" >&2; exit 69; }
-test -f "$AROS_EXT" || { echo "AROS extended ROM not prepared: $AROS_EXT" >&2; exit 69; }
+test -s "$AROS_ISO" || { echo "AROS ISO not prepared: $AROS_ISO" >&2; exit 69; }
+test -f "$GENERATOR" || { echo "missing FS-UAE config generator: $GENERATOR" >&2; exit 69; }
 
 cp "$program" "$EVIDENCE/payload"
 sha256sum "$program" > "$EVIDENCE/payload.sha256"
+
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT HUP INT TERM
+startup="$tmp/User-Startup"
+cat >"$startup" <<EOF
+Echo "amiga-runtime payload start"
+Evidence:payload --version >Evidence:guest-console.txt
+Echo "\$RC" >Evidence:guest-rc.txt
+If "\$RC" EQ "0"
+  Echo "$MARKER" >Evidence:$MARKER
+EndIf
+EOF
+guest_iso="$EVIDENCE/aros-payload.iso"
+rm -f "$guest_iso"
+xorriso -indev "$AROS_ISO" -outdev "$guest_iso" -update "$startup" /S/User-Startup -commit >/dev/null 2>&1
+test -s "$guest_iso"
+
+config="$EVIDENCE/fs-uae.conf"
+python3 "$GENERATOR" "$PROFILES/$profile.conf" /dev/null /dev/null "$guest_iso" /dev/null "$config" "$EVIDENCE"
 
 XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/tmp/amiga-runtime-xdg}
 mkdir -p "$XDG_RUNTIME_DIR"
 chmod 0700 "$XDG_RUNTIME_DIR"
 export XDG_RUNTIME_DIR
+export LIBGL_ALWAYS_SOFTWARE=1
 
 set +e
-timeout "$TIMEOUT" xvfb-run -a fs-uae "$PROFILES/$profile.conf" \
-    --kickstart-file="$AROS_ROM" \
-    --kickstart-ext-file="$AROS_EXT" \
-    --cdrom-drive-0="$AROS_ISO" \
-    --console-debugger=0 \
+timeout "$TIMEOUT" xvfb-run -a -s '-screen 0 1024x768x24 +extension GLX' fs-uae "$config" \
     >"$EVIDENCE/fs-uae.stdout.log" 2>"$EVIDENCE/fs-uae.stderr.log"
 rc=$?
 set -e
 
-case "$rc" in
-    0) status=PASS ;;
-    124) status=TIMEOUT ;;
-    *) status=FAIL ;;
-esac
+if [ -s "$EVIDENCE/$MARKER" ]; then
+    status=PASS
+else
+    status=FAIL
+fi
 
-python3 /opt/amiga-runtime/lib/write-result.py "$status" "$rc" "$profile" "$program" "$EVIDENCE"
+python3 - "$EVIDENCE/result.json" "$rc" "$profile" "$program" "$status" <<'PY'
+import json, pathlib, sys
+out, rc, profile, program, status = sys.argv[1:]
+e = pathlib.Path(out).parent
+guest_rc = None
+p = e / "guest-rc.txt"
+if p.exists():
+    try: guest_rc = int(p.read_text().strip())
+    except ValueError: pass
+data = {
+    "schema": "amiga-runtime-result-v1",
+    "qualification_level": "Q2/Q3-provisional",
+    "runtime": "aros",
+    "emulator": "fs-uae",
+    "profile": profile,
+    "program": pathlib.Path(program).name,
+    "emulator_exit_code": int(rc),
+    "guest_rc": guest_rc,
+    "guest_payload_executed": (e / "AMIGA_RUNTIME_PAYLOAD_OK").exists(),
+    "status": status,
+}
+pathlib.Path(out).write_text(json.dumps(data, indent=2) + "\n")
+PY
+
 [ "$status" = PASS ]
