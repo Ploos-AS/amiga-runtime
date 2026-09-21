@@ -1,0 +1,40 @@
+#!/bin/sh
+set -eu
+
+DEST=${AROS_RUNTIME_DIR:-/opt/amiga-runtime/aros}
+CONTRIB_REPO=${AROS_CONTRIB_REPO:-https://github.com/aros-development-team/contrib.git}
+CONTRIB_REV=${AROS_CONTRIB_REV:-1f7b43ff6ba561a912affafc0164f518e32d7a86}
+OUT="$DEST/regina-provenance.env"
+
+mkdir -p "$DEST"
+{
+  echo "source_repository=$CONTRIB_REPO"
+  echo "source_revision=$CONTRIB_REV"
+  echo "target=amiga-m68k"
+  echo "required_build_target=contrib-regina-module"
+  echo "required_build_target_2=contrib-regina-rexxmast-arosc"
+} > "$OUT"
+
+if [ -s "$DEST/system-root/Libs/regina.library" ] && [ -s "$DEST/system-root/C/RexxMast" ]; then
+  echo "status=present" >> "$OUT"
+  echo "AROS Regina runtime already present"
+  exit 0
+fi
+
+cat >> "$OUT" <<'EOF'
+status=source-pinned
+install_regina=system-root/Libs/regina.library
+install_rexxmast=system-root/C/RexxMast
+EOF
+
+cat <<EOF
+Pinned AROS contrib Regina source:
+  repository: $CONTRIB_REPO
+  revision:   $CONTRIB_REV
+  target:     amiga-m68k
+Required AROS build targets:
+  contrib-regina-module
+  contrib-regina-rexxmast-arosc
+Binary build/injection is intentionally not claimed until the AROS m68k
+cross-build environment is available and verified.
+EOF
