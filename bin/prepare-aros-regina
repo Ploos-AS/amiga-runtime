@@ -13,6 +13,7 @@ mkdir -p "$DEST"
   echo "target=amiga-m68k"
   echo "required_build_target=contrib-regina-module"
   echo "required_build_target_2=contrib-regina-rexxmast-arosc"
+  echo "upstream_build_command=make tools mmake contrib"
 } > "$OUT"
 
 if [ -s "$DEST/system-root/Libs/regina.library" ] && [ -s "$DEST/system-root/C/RexxMast" ]; then
@@ -35,6 +36,9 @@ Pinned AROS contrib Regina source:
 Required AROS build targets:
   contrib-regina-module
   contrib-regina-rexxmast-arosc
+Upstream amiga-m68k contrib packaging sequence:
+  ./configure --target=amiga-m68k ...
+  make tools mmake contrib
 Binary build/injection is intentionally not claimed until the AROS m68k
 cross-build environment is available and verified.
 EOF
