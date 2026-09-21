@@ -95,7 +95,24 @@ case "${1:-}" in
             rc=$?
             set -e
             [ "$first" = true ] || printf ',' >>"$summary"; first=false
-            printf '{"emulator":"%s","process_rc":%s,"status":"%s"}' "$emulator" "$rc" "$([ "$rc" -eq 0 ] && printf PASS || printf FAIL)" >>"$summary"
+            result_file=""
+            for candidate in "$edir/result.json" "$edir/fellowng-result.json"; do
+                if [ -s "$candidate" ]; then result_file="$candidate"; break; fi
+            done
+            printf '{"emulator":"%s","process_rc":%s,"status":"%s","evidence_dir":"%s","result_json":' \
+                "$emulator" "$rc" "$([ "$rc" -eq 0 ] && printf PASS || printf FAIL)" "$emulator" >>"$summary"
+            if [ -n "$result_file" ]; then
+                python3 - "$result_file" <<'PY' >>"$summary"
+import json, pathlib, sys
+try:
+    print(json.dumps(json.loads(pathlib.Path(sys.argv[1]).read_text()), separators=(",", ":")), end="")
+except Exception:
+    print("null", end="")
+PY
+            else
+                printf 'null' >>"$summary"
+            fi
+            printf '}' >>"$summary"
             IFS=,
         done
         IFS=$oldifs
