@@ -18,7 +18,7 @@ jobs:
       - name: Install AROS build prerequisites
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential bison flex git libgmp-dev libmpc-dev libmpfr-dev python3 texinfo
+          sudo apt-get install -y build-essential bison flex git libgmp-dev libmpc-dev libmpfr-dev netpbm python3 texinfo
       - name: Build Regina and RexxMast for AROS m68k
         run: |
           mkdir -p "$PWD/aros-regina-out"
