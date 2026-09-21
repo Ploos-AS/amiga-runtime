@@ -50,6 +50,408 @@ jobs:
           test -s aros-cache/aros-rom.bin
           test -s aros-cache/aros-ext.bin
           test -s aros-cache/manifest.txt
+          test -s aros-cache/arexx-components.env
+          grep -qx 'rexxsyslib.library=present' aros-cache/arexx-components.env
+          grep -qx 'RX=present' aros-cache/arexx-components.env
+          grep -Eq '^RexxMast=(present|missing)
+          grep -qx 'target=amiga-m68k' aros-cache/manifest.txt
+          cat aros-cache/manifest.txt
+      - name: Cache pinned Amiberry runtime
+        id: amiberry-cache
+        uses: actions/cache@v4
+        with:
+          path: amiberry-cache
+          key: amiga-runtime-amiberry-${{ runner.os }}-${{ hashFiles('runtime/amiberry/pinned.env', 'bin/prepare-amiberry') }}
+      - name: Acquire pinned Amiberry runtime
+        run: |
+          mkdir -p "$PWD/amiberry-cache" "$PWD/amiberry-acquisition-diagnostics"
+          set -o pipefail
+          docker run --rm \
+            -v "$PWD/amiberry-cache:/opt/amiga-runtime/amiberry" \
+            amiga-runtime:m2 prepare-amiberry \
+            2>&1 | tee "$PWD/amiberry-acquisition-diagnostics/prepare-amiberry.log"
+      - name: Upload Amiberry acquisition diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: amiberry-acquisition-diagnostics
+          path: amiberry-acquisition-diagnostics/
+          if-no-files-found: warn
+      - name: Verify pinned Amiberry runtime
+        run: |
+          test -s amiberry-cache/manifest.txt
+          test -s amiberry-cache/executable.txt
+          grep -q '^version=' amiberry-cache/manifest.txt
+          cat amiberry-cache/manifest.txt
+      - name: Probe Amiberry backend
+        run: |
+          mkdir -p "$PWD/amiberry-evidence"
+          docker run --rm \
+            --entrypoint backend-amiberry \
+            -v "$PWD/amiberry-cache:/opt/amiga-runtime/amiberry:ro" \
+            amiga-runtime:m2 probe \
+            | tee "$PWD/amiberry-evidence/probe.json"
+          jq -e '.backend == "amiberry" and .status == "available"' "$PWD/amiberry-evidence/probe.json"
+
+      - name: Qualify AROS guest boot with Amiberry
+        run: |
+          mkdir -p "$PWD/amiberry-runtime-evidence"
+          docker run --rm \
+            --entrypoint backend-amiberry \
+            -e AMIGA_RUNTIME_BOOT_TIMEOUT=30 \
+            -v "$PWD/aros-cache:/opt/amiga-runtime/aros:ro" \
+            -v "$PWD/amiberry-cache:/opt/amiga-runtime/amiberry:ro" \
+            -v "$PWD/amiberry-runtime-evidence:/work/evidence" \
+            amiga-runtime:m2 qualify-aros-boot a1200-020-aros
+          jq -e '.status == "PASS" and .emulator == "amiberry" and .guest_boot_proven == true' amiberry-runtime-evidence/result.json
+
+      - name: Build FellowNG portable SDL frontend
+        run: |
+          git clone --depth 1 https://github.com/Ploos-AS/FellowNG.git "$PWD/fellowng-src"
+          git -C "$PWD/fellowng-src" rev-parse HEAD | tee "$PWD/fellowng-source-revision.txt"
+          docker run --rm \
+            -v "$PWD/fellowng-src:/src" \
+            -w /src \
+            debian:13-slim sh -ec '
+              apt-get update
+              apt-get install -y --no-install-recommends build-essential cmake ninja-build libsdl3-dev python3
+              cmake -S . -B build-runtime -G Ninja \
+                -DFELLOWNG_BUILD_SDL_FRONTEND=ON \
+                -DFELLOWNG_BUILD_TESTS=OFF
+              cmake --build build-runtime --target fellowng-sdl
+            '
+          mkdir -p "$PWD/fellowng-cache"
+          cp "$PWD/fellowng-src/build-runtime/frontend/sdl/fellowng-sdl" "$PWD/fellowng-cache/"
+          chmod 0755 "$PWD/fellowng-cache/fellowng-sdl"
+
+      - name: Probe FellowNG backend
+        run: |
+          mkdir -p "$PWD/fellowng-evidence"
+          docker run --rm \
+            --entrypoint backend-fellowng \
+            -e FELLOWNG_BIN=/opt/fellowng/fellowng-sdl \
+            -v "$PWD/fellowng-cache:/opt/fellowng:ro" \
+            amiga-runtime:m2 probe \
+            | tee "$PWD/fellowng-evidence/probe.json"
+          jq -e '.backend == "fellowng" and .status == "available" and .automation == "fellowng.runtime-result.v1"' "$PWD/fellowng-evidence/probe.json"
+
+      - name: Qualify AROS with FellowNG
+        run: |
+          mkdir -p "$PWD/fellowng-runtime-evidence"
+          docker run --rm \
+            --entrypoint backend-fellowng \
+            -e FELLOWNG_BIN=/opt/fellowng/fellowng-sdl \
+            -e FELLOWNG_ROM=/opt/amiga-runtime/aros/aros-rom.bin \
+            -v "$PWD/fellowng-cache:/opt/fellowng:ro" \
+            -v "$PWD/aros-cache:/opt/amiga-runtime/aros:ro" \
+            -v "$PWD/fellowng-runtime-evidence:/work/evidence" \
+            amiga-runtime:m2 qualify aros a1200-020-aros
+          grep -q '"schema":"fellowng.runtime-result.v1"' "$PWD/fellowng-runtime-evidence/fellowng-runtime.log"
+          grep -q '"status":"pass"' "$PWD/fellowng-runtime-evidence/fellowng-runtime.log"
+
+      - name: Qualify AROS guest boot
+        run: |
+          mkdir -p "$PWD/runtime-evidence"
+          docker run --rm \
+            -e AMIGA_RUNTIME_BOOT_TIMEOUT=60 \
+            -v "$PWD/aros-cache:/opt/amiga-runtime/aros:ro" \
+            -v "$PWD/runtime-evidence:/work/evidence" \
+            amiga-runtime:m2 qualify-aros-boot a1200-020-aros
+          jq -e '.status == "PASS" and .emulator == "fs-uae" and .guest_boot_proven == true' runtime-evidence/result.json
+          test "$(cat runtime-evidence/AMIGA_RUNTIME_BOOT_OK)" = "AMIGA_RUNTIME_BOOT_OK"
+      - name: Verify emulator-neutral qualification dispatch
+        run: |
+          mkdir -p "$PWD/dispatch-fsuae" "$PWD/dispatch-amiberry" "$PWD/dispatch-fellowng"
+          docker run --rm \
+            -e AMIGA_RUNTIME_BOOT_TIMEOUT=30 \
+            -v "$PWD/aros-cache:/opt/amiga-runtime/aros:ro" \
+            -v "$PWD/dispatch-fsuae:/work/evidence" \
+            amiga-runtime:m2 qualify-aros-boot a1200-020-aros --emulator fs-uae
+          jq -e '.status == "PASS" and .emulator == "fs-uae"' "$PWD/dispatch-fsuae/result.json"
+
+          docker run --rm \
+            -e AMIGA_RUNTIME_BOOT_TIMEOUT=30 \
+            -v "$PWD/aros-cache:/opt/amiga-runtime/aros:ro" \
+            -v "$PWD/amiberry-cache:/opt/amiga-runtime/amiberry:ro" \
+            -v "$PWD/dispatch-amiberry:/work/evidence" \
+            amiga-runtime:m2 qualify-aros-boot a1200-020-aros --emulator amiberry
+          jq -e '.status == "PASS" and .emulator == "amiberry"' "$PWD/dispatch-amiberry/result.json"
+
+          docker run --rm \
+            -e FELLOWNG_BIN=/opt/fellowng/fellowng-sdl \
+            -v "$PWD/fellowng-cache:/opt/fellowng:ro" \
+            -v "$PWD/aros-cache:/opt/amiga-runtime/aros:ro" \
+            -v "$PWD/dispatch-fellowng:/work/evidence" \
+            amiga-runtime:m2 qualify-aros-boot a1200-020-aros --emulator fellowng
+          grep -q '"schema":"fellowng.runtime-result.v1"' "$PWD/dispatch-fellowng/fellowng-runtime.log"
+          grep -q '"status":"pass"' "$PWD/dispatch-fellowng/fellowng-runtime.log"
+
+      - name: Compare all qualified emulator backends
+        run: |
+          mkdir -p "$PWD/compare-evidence"
+          docker run --rm \
+            -e AMIGA_RUNTIME_BOOT_TIMEOUT=30 \
+            -e FELLOWNG_BIN=/opt/fellowng/fellowng-sdl \
+            -v "$PWD/aros-cache:/opt/amiga-runtime/aros:ro" \
+            -v "$PWD/amiberry-cache:/opt/amiga-runtime/amiberry:ro" \
+            -v "$PWD/fellowng-cache:/opt/fellowng:ro" \
+            -v "$PWD/compare-evidence:/work/evidence" \
+            amiga-runtime:m2 compare a1200-020-aros --emulators fs-uae,amiberry,fellowng
+          jq -e '.status == "PASS"
+            and (.results | length) == 3
+            and ([.results[].emulator] | sort) == ["amiberry","fellowng","fs-uae"]
+            and all(.results[]; (.evidence_dir | type) == "string")
+            and all(.results[]; has("result_json"))' "$PWD/compare-evidence/compare.json"
+          jq -e '
+            [.results[].result_json] as $r
+            | all($r[];
+                .schema == 1
+                and .qualification_level == "Q3"
+                and .runtime == "aros-m68k"
+                and (.emulator | type) == "string"
+                and .profile == "a1200-020-aros"
+                and (.guest_boot_proven | type) == "boolean"
+                and (.status == "PASS" or .status == "FAIL")
+                and (.proof | type) == "string")
+          ' "$PWD/compare-evidence/compare.json"
+
+      - name: Qualify Q3 core infrastructure
+        run: |
+          python3 tools/qualify-q3-core.py "$PWD"
+          jq -e '.qualification_level == "Q3" and .status == "PASS" and .arexx_required == false and (.backends["fs-uae"].guest_boot_proven == true) and (.backends["amiberry"].guest_boot_proven == true)' q3-core-evidence/result.json
+      - name: Verify result writer
+        run: |
+          mkdir -p evidence
+          python3 lib/write-result.py PASS 0 a1200-020 smoke evidence
+          jq -e '.status == "PASS" and .runtime == "aros"' evidence/result.json
+          test -s evidence/junit.xml
+      - name: Upload qualification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: amiga-runtime-m2-evidence
+          path: |
+            evidence/
+            runtime-evidence/
+            amiberry-evidence/
+            amiberry-runtime-evidence/
+            fellowng-evidence/
+            fellowng-runtime-evidence/
+            fellowng-source-revision.txt
+            dispatch-fsuae/
+            dispatch-amiberry/
+            dispatch-fellowng/
+            compare-evidence/
+            q3-core-evidence/
+            amiberry-cache/manifest.txt
+            aros-cache/manifest.txt
+            aros-cache/archive.sha256
+            aros-cache/iso-root-inventory.txt
+            aros-cache/startup-sequence-path.txt
+            aros-cache/xorriso-root-inventory.txt
+            aros-cache/xorriso-startup-sequence-path.txt
+            aros-cache/system-startup-sequence-path.txt
+ aros-cache/arexx-components.env
+          grep -Eq '^regina.library=(present|missing)
+          grep -qx 'target=amiga-m68k' aros-cache/manifest.txt
+          cat aros-cache/manifest.txt
+      - name: Cache pinned Amiberry runtime
+        id: amiberry-cache
+        uses: actions/cache@v4
+        with:
+          path: amiberry-cache
+          key: amiga-runtime-amiberry-${{ runner.os }}-${{ hashFiles('runtime/amiberry/pinned.env', 'bin/prepare-amiberry') }}
+      - name: Acquire pinned Amiberry runtime
+        run: |
+          mkdir -p "$PWD/amiberry-cache" "$PWD/amiberry-acquisition-diagnostics"
+          set -o pipefail
+          docker run --rm \
+            -v "$PWD/amiberry-cache:/opt/amiga-runtime/amiberry" \
+            amiga-runtime:m2 prepare-amiberry \
+            2>&1 | tee "$PWD/amiberry-acquisition-diagnostics/prepare-amiberry.log"
+      - name: Upload Amiberry acquisition diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: amiberry-acquisition-diagnostics
+          path: amiberry-acquisition-diagnostics/
+          if-no-files-found: warn
+      - name: Verify pinned Amiberry runtime
+        run: |
+          test -s amiberry-cache/manifest.txt
+          test -s amiberry-cache/executable.txt
+          grep -q '^version=' amiberry-cache/manifest.txt
+          cat amiberry-cache/manifest.txt
+      - name: Probe Amiberry backend
+        run: |
+          mkdir -p "$PWD/amiberry-evidence"
+          docker run --rm \
+            --entrypoint backend-amiberry \
+            -v "$PWD/amiberry-cache:/opt/amiga-runtime/amiberry:ro" \
+            amiga-runtime:m2 probe \
+            | tee "$PWD/amiberry-evidence/probe.json"
+          jq -e '.backend == "amiberry" and .status == "available"' "$PWD/amiberry-evidence/probe.json"
+
+      - name: Qualify AROS guest boot with Amiberry
+        run: |
+          mkdir -p "$PWD/amiberry-runtime-evidence"
+          docker run --rm \
+            --entrypoint backend-amiberry \
+            -e AMIGA_RUNTIME_BOOT_TIMEOUT=30 \
+            -v "$PWD/aros-cache:/opt/amiga-runtime/aros:ro" \
+            -v "$PWD/amiberry-cache:/opt/amiga-runtime/amiberry:ro" \
+            -v "$PWD/amiberry-runtime-evidence:/work/evidence" \
+            amiga-runtime:m2 qualify-aros-boot a1200-020-aros
+          jq -e '.status == "PASS" and .emulator == "amiberry" and .guest_boot_proven == true' amiberry-runtime-evidence/result.json
+
+      - name: Build FellowNG portable SDL frontend
+        run: |
+          git clone --depth 1 https://github.com/Ploos-AS/FellowNG.git "$PWD/fellowng-src"
+          git -C "$PWD/fellowng-src" rev-parse HEAD | tee "$PWD/fellowng-source-revision.txt"
+          docker run --rm \
+            -v "$PWD/fellowng-src:/src" \
+            -w /src \
+            debian:13-slim sh -ec '
+              apt-get update
+              apt-get install -y --no-install-recommends build-essential cmake ninja-build libsdl3-dev python3
+              cmake -S . -B build-runtime -G Ninja \
+                -DFELLOWNG_BUILD_SDL_FRONTEND=ON \
+                -DFELLOWNG_BUILD_TESTS=OFF
+              cmake --build build-runtime --target fellowng-sdl
+            '
+          mkdir -p "$PWD/fellowng-cache"
+          cp "$PWD/fellowng-src/build-runtime/frontend/sdl/fellowng-sdl" "$PWD/fellowng-cache/"
+          chmod 0755 "$PWD/fellowng-cache/fellowng-sdl"
+
+      - name: Probe FellowNG backend
+        run: |
+          mkdir -p "$PWD/fellowng-evidence"
+          docker run --rm \
+            --entrypoint backend-fellowng \
+            -e FELLOWNG_BIN=/opt/fellowng/fellowng-sdl \
+            -v "$PWD/fellowng-cache:/opt/fellowng:ro" \
+            amiga-runtime:m2 probe \
+            | tee "$PWD/fellowng-evidence/probe.json"
+          jq -e '.backend == "fellowng" and .status == "available" and .automation == "fellowng.runtime-result.v1"' "$PWD/fellowng-evidence/probe.json"
+
+      - name: Qualify AROS with FellowNG
+        run: |
+          mkdir -p "$PWD/fellowng-runtime-evidence"
+          docker run --rm \
+            --entrypoint backend-fellowng \
+            -e FELLOWNG_BIN=/opt/fellowng/fellowng-sdl \
+            -e FELLOWNG_ROM=/opt/amiga-runtime/aros/aros-rom.bin \
+            -v "$PWD/fellowng-cache:/opt/fellowng:ro" \
+            -v "$PWD/aros-cache:/opt/amiga-runtime/aros:ro" \
+            -v "$PWD/fellowng-runtime-evidence:/work/evidence" \
+            amiga-runtime:m2 qualify aros a1200-020-aros
+          grep -q '"schema":"fellowng.runtime-result.v1"' "$PWD/fellowng-runtime-evidence/fellowng-runtime.log"
+          grep -q '"status":"pass"' "$PWD/fellowng-runtime-evidence/fellowng-runtime.log"
+
+      - name: Qualify AROS guest boot
+        run: |
+          mkdir -p "$PWD/runtime-evidence"
+          docker run --rm \
+            -e AMIGA_RUNTIME_BOOT_TIMEOUT=60 \
+            -v "$PWD/aros-cache:/opt/amiga-runtime/aros:ro" \
+            -v "$PWD/runtime-evidence:/work/evidence" \
+            amiga-runtime:m2 qualify-aros-boot a1200-020-aros
+          jq -e '.status == "PASS" and .emulator == "fs-uae" and .guest_boot_proven == true' runtime-evidence/result.json
+          test "$(cat runtime-evidence/AMIGA_RUNTIME_BOOT_OK)" = "AMIGA_RUNTIME_BOOT_OK"
+      - name: Verify emulator-neutral qualification dispatch
+        run: |
+          mkdir -p "$PWD/dispatch-fsuae" "$PWD/dispatch-amiberry" "$PWD/dispatch-fellowng"
+          docker run --rm \
+            -e AMIGA_RUNTIME_BOOT_TIMEOUT=30 \
+            -v "$PWD/aros-cache:/opt/amiga-runtime/aros:ro" \
+            -v "$PWD/dispatch-fsuae:/work/evidence" \
+            amiga-runtime:m2 qualify-aros-boot a1200-020-aros --emulator fs-uae
+          jq -e '.status == "PASS" and .emulator == "fs-uae"' "$PWD/dispatch-fsuae/result.json"
+
+          docker run --rm \
+            -e AMIGA_RUNTIME_BOOT_TIMEOUT=30 \
+            -v "$PWD/aros-cache:/opt/amiga-runtime/aros:ro" \
+            -v "$PWD/amiberry-cache:/opt/amiga-runtime/amiberry:ro" \
+            -v "$PWD/dispatch-amiberry:/work/evidence" \
+            amiga-runtime:m2 qualify-aros-boot a1200-020-aros --emulator amiberry
+          jq -e '.status == "PASS" and .emulator == "amiberry"' "$PWD/dispatch-amiberry/result.json"
+
+          docker run --rm \
+            -e FELLOWNG_BIN=/opt/fellowng/fellowng-sdl \
+            -v "$PWD/fellowng-cache:/opt/fellowng:ro" \
+            -v "$PWD/aros-cache:/opt/amiga-runtime/aros:ro" \
+            -v "$PWD/dispatch-fellowng:/work/evidence" \
+            amiga-runtime:m2 qualify-aros-boot a1200-020-aros --emulator fellowng
+          grep -q '"schema":"fellowng.runtime-result.v1"' "$PWD/dispatch-fellowng/fellowng-runtime.log"
+          grep -q '"status":"pass"' "$PWD/dispatch-fellowng/fellowng-runtime.log"
+
+      - name: Compare all qualified emulator backends
+        run: |
+          mkdir -p "$PWD/compare-evidence"
+          docker run --rm \
+            -e AMIGA_RUNTIME_BOOT_TIMEOUT=30 \
+            -e FELLOWNG_BIN=/opt/fellowng/fellowng-sdl \
+            -v "$PWD/aros-cache:/opt/amiga-runtime/aros:ro" \
+            -v "$PWD/amiberry-cache:/opt/amiga-runtime/amiberry:ro" \
+            -v "$PWD/fellowng-cache:/opt/fellowng:ro" \
+            -v "$PWD/compare-evidence:/work/evidence" \
+            amiga-runtime:m2 compare a1200-020-aros --emulators fs-uae,amiberry,fellowng
+          jq -e '.status == "PASS"
+            and (.results | length) == 3
+            and ([.results[].emulator] | sort) == ["amiberry","fellowng","fs-uae"]
+            and all(.results[]; (.evidence_dir | type) == "string")
+            and all(.results[]; has("result_json"))' "$PWD/compare-evidence/compare.json"
+          jq -e '
+            [.results[].result_json] as $r
+            | all($r[];
+                .schema == 1
+                and .qualification_level == "Q3"
+                and .runtime == "aros-m68k"
+                and (.emulator | type) == "string"
+                and .profile == "a1200-020-aros"
+                and (.guest_boot_proven | type) == "boolean"
+                and (.status == "PASS" or .status == "FAIL")
+                and (.proof | type) == "string")
+          ' "$PWD/compare-evidence/compare.json"
+
+      - name: Qualify Q3 core infrastructure
+        run: |
+          python3 tools/qualify-q3-core.py "$PWD"
+          jq -e '.qualification_level == "Q3" and .status == "PASS" and .arexx_required == false and (.backends["fs-uae"].guest_boot_proven == true) and (.backends["amiberry"].guest_boot_proven == true)' q3-core-evidence/result.json
+      - name: Verify result writer
+        run: |
+          mkdir -p evidence
+          python3 lib/write-result.py PASS 0 a1200-020 smoke evidence
+          jq -e '.status == "PASS" and .runtime == "aros"' evidence/result.json
+          test -s evidence/junit.xml
+      - name: Upload qualification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: amiga-runtime-m2-evidence
+          path: |
+            evidence/
+            runtime-evidence/
+            amiberry-evidence/
+            amiberry-runtime-evidence/
+            fellowng-evidence/
+            fellowng-runtime-evidence/
+            fellowng-source-revision.txt
+            dispatch-fsuae/
+            dispatch-amiberry/
+            dispatch-fellowng/
+            compare-evidence/
+            q3-core-evidence/
+            amiberry-cache/manifest.txt
+            aros-cache/manifest.txt
+            aros-cache/archive.sha256
+            aros-cache/iso-root-inventory.txt
+            aros-cache/startup-sequence-path.txt
+            aros-cache/xorriso-root-inventory.txt
+            aros-cache/xorriso-startup-sequence-path.txt
+            aros-cache/system-startup-sequence-path.txt
+ aros-cache/arexx-components.env
+          cat aros-cache/arexx-components.env
           grep -qx 'acquisition=official-nightly-index' aros-cache/manifest.txt
           grep -qx 'target=amiga-m68k' aros-cache/manifest.txt
           cat aros-cache/manifest.txt
