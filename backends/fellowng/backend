@@ -59,13 +59,13 @@ run_aros() {
 
     set +e
     SDL_VIDEODRIVER=${SDL_VIDEODRIVER:-dummy} SDL_AUDIODRIVER=${SDL_AUDIODRIVER:-dummy} "$@" | tee "$evidence/fellowng-runtime.log"
-    rc=${PIPESTATUS:-}
     set -e
-    # /bin/sh has no portable pipe-status; recover the FellowNG JSON result
+    # Recover the FellowNG JSON result from the log and use its status as the
+    # qualification authority; this remains portable under /bin/sh.
     # and use its status as the qualification authority.
     python3 - "$evidence/fellowng-runtime.log" "$evidence/result.json" "$profile" "$mode" <<'PY'
 import json, pathlib, sys
-log, out, profile, mode = map(pathlib.Path, sys.argv[1:3]) + tuple() if False else (sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
+log, out, profile, mode = sys.argv[1:]
 lines = pathlib.Path(log).read_text(errors="replace").splitlines()
 raw = None
 for line in reversed(lines):
