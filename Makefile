@@ -4,6 +4,7 @@ check:
 	sh -n bin/amiga-runtime
 	sh -n bin/prepare-aros
 	sh -n bin/prepare-aros-regina
+	sh -n tools/build-aros-regina
 	sh -n bin/prepare-amiberry
 	sh -n bin/prepare-aros-guest-marker
 	sh -n bin/run-aros
