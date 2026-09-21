@@ -194,7 +194,11 @@ jobs:
             -v "$PWD/fellowng-cache:/opt/fellowng:ro" \
             -v "$PWD/compare-evidence:/work/evidence" \
             amiga-runtime:m2 compare a1200-020-aros --emulators fs-uae,amiberry,fellowng
-          jq -e '.status == "PASS" and (.results | length) == 3 and ([.results[].emulator] | sort) == ["amiberry","fellowng","fs-uae"]' "$PWD/compare-evidence/compare.json"
+          jq -e '.status == "PASS"
+            and (.results | length) == 3
+            and ([.results[].emulator] | sort) == ["amiberry","fellowng","fs-uae"]
+            and all(.results[]; (.evidence_dir | type) == "string")
+            and all(.results[]; has("result_json"))' "$PWD/compare-evidence/compare.json"
 
       - name: Qualify Q3 core infrastructure
         run: |
