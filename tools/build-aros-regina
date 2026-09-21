@@ -24,6 +24,7 @@ make -j"$JOBS" crosstools
 mkdir -p "$WORK/build"
 cd "$WORK/build"
 "$WORK/AROS/configure" --target=amiga-m68k --with-aros-toolchain="$WORK/toolchain"
+make -j"$JOBS" kernel
 make -j"$JOBS" tools mmake
 make -j"$JOBS" contrib-regina-module contrib-regina-rexxmast-arosc
 
