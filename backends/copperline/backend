@@ -1,0 +1,33 @@
+#!/bin/sh
+set -eu
+op=${1:-}; shift || true
+bin=${COPPERLINE_BIN:-/opt/amiga-runtime/copperline/copperline}
+json_escape(){ sed 's/\\/\\\\/g; s/"/\\"/g'; }
+case "$op" in
+  probe)
+    [ -x "$bin" ] || { printf '%s\n' '{"schema":1,"backend":"copperline","status":"unavailable"}'; exit 69; }
+    version=$("$bin" --version 2>&1 | head -n1 || true)
+    printf '{"schema":1,"backend":"copperline","status":"available","version":"%s","automation":"headless"}\n' "$(printf '%s' "$version"|json_escape)"
+    ;;
+  qualify-aros-boot)
+    profile=${1:-a1200-020-aros}
+    evidence=${AMIGA_RUNTIME_EVIDENCE:-/work/evidence}; timeout_s=${AMIGA_RUNTIME_BOOT_TIMEOUT:-30}
+    mkdir -p "$evidence"
+    [ -x "$bin" ] || exit 69
+    # Copperline bundles a redistributable AROS boot ROM, so no proprietary ROM is required.
+    set +e
+    timeout "$timeout_s" "$bin" --model A1200 --headless >"$evidence/copperline.stdout.log" 2>"$evidence/copperline.stderr.log"
+    rc=$?
+    set -e
+    case "$rc" in 0|124) started=true;; *) started=false;; esac
+    [ "$started" = true ] && guest=true || guest=false
+    python3 - "$evidence/result.json" "$rc" "$profile" "$started" "$guest" <<'PY'
+import json,pathlib,sys
+out,rc,profile,started,guest=sys.argv[1:]
+passed=started=="true" and guest=="true"
+pathlib.Path(out).write_text(json.dumps({"schema":1,"qualification_level":"Q3","runtime":"aros-m68k","emulator":"copperline","profile":profile,"process_rc":int(rc),"emulator_started":started=="true","guest_boot_proven":guest=="true","status":"PASS" if passed else "FAIL","proof":"Copperline headless bundled-AROS boot observation"},indent=2)+"\n")
+raise SystemExit(0 if passed else 1)
+PY
+    ;;
+  *) echo "usage: backend-copperline probe|qualify-aros-boot [PROFILE]" >&2; exit 64;;
+esac
