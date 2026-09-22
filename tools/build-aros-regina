@@ -30,7 +30,10 @@ export PATH="$WORK/toolchain/bin:$PATH"
 "$WORK/AROS/configure" --target=amiga-m68k --with-aros-toolchain-install="$WORK/toolchain"
 make -j"$JOBS" kernel
 make -j"$JOBS" tools mmake
-make -j"$JOBS" contrib-regina-module contrib-regina-rexxmast-arosc
+# Build the libraries first: RexxMast links against both and parallel mmake does not
+# reliably order these independently requested targets.
+make -j"$JOBS" contrib-regina-module rexxsyslib-linklib
+make -j"$JOBS" contrib-regina-rexxmast-arosc
 
 find "$WORK/build/bin/amiga-m68k/AROS" -type f \( -name 'regina.library' -o -name 'RexxMast' \) -print -exec cp {} "$OUT/" \;
 
