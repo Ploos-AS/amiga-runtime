@@ -4,7 +4,7 @@ PIN=${COPPERLINE_PIN:-/opt/amiga-runtime/runtime/copperline/pinned.env}
 DEST=${COPPERLINE_RUNTIME_DIR:-/opt/amiga-runtime/copperline}
 . "$PIN"
 mkdir -p "$DEST"
-asset="Copperline-${COPPERLINE_VERSION}-Linux-X64.AppImage"
+asset="${COPPERLINE_LINUX_AMD64_ASSET}"
 url="$COPPERLINE_RELEASE_REPOSITORY/releases/download/v$COPPERLINE_VERSION/$asset"
 curl -fL --retry 3 "$url" -o "$DEST/copperline"
 chmod 0755 "$DEST/copperline"
