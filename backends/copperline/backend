@@ -16,16 +16,16 @@ case "$op" in
     [ -x "$bin" ] || exit 69
     # Copperline bundles a redistributable AROS boot ROM, so no proprietary ROM is required.
     set +e
-    timeout "$timeout_s" "$bin" --model A1200 --headless >"$evidence/copperline.stdout.log" 2>"$evidence/copperline.stderr.log"
+    timeout "$timeout_s" "$bin" --model A1200 --factory --noaudio --screenshot-after 5 "$evidence/copperline-boot.png" >"$evidence/copperline.stdout.log" 2>"$evidence/copperline.stderr.log"
     rc=$?
     set -e
-    case "$rc" in 0|124) started=true;; *) started=false;; esac
-    [ "$started" = true ] && guest=true || guest=false
+    case "$rc" in 0) started=true;; *) started=false;; esac
+    if [ "$started" = true ] && [ -s "$evidence/copperline-boot.png" ]; then guest=true; else guest=false; fi
     python3 - "$evidence/result.json" "$rc" "$profile" "$started" "$guest" <<'PY'
 import json,pathlib,sys
 out,rc,profile,started,guest=sys.argv[1:]
 passed=started=="true" and guest=="true"
-pathlib.Path(out).write_text(json.dumps({"schema":1,"qualification_level":"Q3","runtime":"aros-m68k","emulator":"copperline","profile":profile,"process_rc":int(rc),"emulator_started":started=="true","guest_boot_proven":guest=="true","status":"PASS" if passed else "FAIL","proof":"Copperline headless bundled-AROS boot observation"},indent=2)+"\n")
+pathlib.Path(out).write_text(json.dumps({"schema":1,"qualification_level":"Q3","runtime":"aros-m68k","emulator":"copperline","profile":profile,"process_rc":int(rc),"emulator_started":started=="true","guest_boot_proven":guest=="true","status":"PASS" if passed else "FAIL","proof":"Copperline completed a deterministic headless bundled-AROS run and captured a guest frame"},indent=2)+"\n")
 raise SystemExit(0 if passed else 1)
 PY
     ;;
