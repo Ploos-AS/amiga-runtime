@@ -13,6 +13,9 @@ rm -rf "$WORK"
 mkdir -p "$WORK" "$OUT"
 git clone --filter=blob:none "$AROS_REPO" "$WORK/AROS"
 git -C "$WORK/AROS" checkout --detach "$AROS_REV"
+# AROS uses git submodules for generated catalog inputs (including dos.library).
+# Without these, kernel compilation misses MSG_STRING_* definitions in displayerror.c.
+git -C "$WORK/AROS" submodule update --init --recursive
 git clone --filter=blob:none "$CONTRIB_REPO" "$WORK/AROS/contrib"
 git -C "$WORK/AROS/contrib" checkout --detach "$CONTRIB_REV"
 
