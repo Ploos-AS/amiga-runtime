@@ -10,7 +10,8 @@ usage:
   amiga-runtime profiles
   amiga-runtime prepare-aros
   amiga-runtime prepare-amiberry
-  amiga-runtime qualify-aros-boot [PROFILE] [--emulator fs-uae|amiberry|fellowng]
+  amiga-runtime prepare-copperline
+  amiga-runtime qualify-aros-boot [PROFILE] [--emulator fs-uae|amiberry|fellowng|copperline]
   amiga-runtime qualify-aros-arexx
   amiga-runtime backends
   amiga-runtime compare [PROFILE] --emulators LIST
@@ -33,7 +34,7 @@ case "${1:-}" in
         echo 'amiga-runtime M1 harness self-test: PASS'
         ;;
     backends)
-        printf '%s\n' 'fs-uae stable' 'amiberry adapter' 'fellowng integration'
+        printf '%s\n' 'fs-uae stable' 'amiberry adapter' 'fellowng integration' 'copperline adapter'
         ;;
     targets)
         jq -r '.targets[] | [.id,.arch,.runtime,((.backends // [])|join(","))] | @tsv' /opt/amiga-runtime/runtime/targets.json
@@ -46,6 +47,9 @@ case "${1:-}" in
         ;;
     prepare-amiberry)
         exec prepare-amiberry
+        ;;
+    prepare-copperline)
+        exec prepare-copperline
         ;;
     qualify-aros-boot)
         shift
@@ -62,6 +66,7 @@ case "${1:-}" in
             fs-uae) exec backend-fs-uae qualify-aros-boot "$profile" ;;
             amiberry) exec backend-amiberry qualify-aros-boot "$profile" ;;
             fellowng) exec backend-fellowng qualify aros "$profile" ;;
+            copperline) exec backend-copperline qualify-aros-boot "$profile" ;;
             *) echo "unsupported emulator: $emulator" >&2; exit 65 ;;
         esac
         ;;
@@ -88,7 +93,7 @@ case "${1:-}" in
         oldifs=$IFS; IFS=,
         for emulator in $emulators; do
             IFS=$oldifs
-            case "$emulator" in fs-uae|amiberry|fellowng) ;; *) echo "unsupported emulator: $emulator" >&2; exit 65 ;; esac
+            case "$emulator" in fs-uae|amiberry|fellowng|copperline) ;; *) echo "unsupported emulator: $emulator" >&2; exit 65 ;; esac
             edir="$root/$emulator"; mkdir -p "$edir"
             set +e
             AMIGA_RUNTIME_EVIDENCE="$edir" "$0" qualify-aros-boot "$profile" --emulator "$emulator"
