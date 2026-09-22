@@ -135,6 +135,31 @@ jobs:
             amiga-runtime:m2 qualify-aros-boot a1200-020-aros
           jq -e '.status == "PASS" and .emulator == "amiberry" and .guest_boot_proven == true' amiberry-runtime-evidence/result.json
 
+      - name: Acquire Copperline runtime
+        run: |
+          mkdir -p "$PWD/copperline-cache"
+          docker run --rm \
+            -v "$PWD/copperline-cache:/opt/amiga-runtime/copperline" \
+            amiga-runtime:m2 prepare-copperline
+      - name: Probe Copperline backend
+        run: |
+          mkdir -p "$PWD/copperline-evidence"
+          docker run --rm \
+            --entrypoint backend-copperline \
+            -v "$PWD/copperline-cache:/opt/amiga-runtime/copperline:ro" \
+            amiga-runtime:m2 probe | tee "$PWD/copperline-evidence/probe.json"
+          jq -e '.backend == "copperline" and .status == "available"' "$PWD/copperline-evidence/probe.json"
+      - name: Qualify bundled AROS guest with Copperline
+        run: |
+          mkdir -p "$PWD/copperline-runtime-evidence"
+          docker run --rm \
+            --entrypoint backend-copperline \
+            -v "$PWD/copperline-cache:/opt/amiga-runtime/copperline:ro" \
+            -v "$PWD/copperline-runtime-evidence:/work/evidence" \
+            amiga-runtime:m2 qualify-aros-boot a1200-020-aros
+          jq -e '.status == "PASS" and .emulator == "copperline" and .guest_boot_proven == true' "$PWD/copperline-runtime-evidence/result.json"
+          test -s "$PWD/copperline-runtime-evidence/copperline-boot.png"
+
       - name: Build FellowNG portable SDL frontend
         run: |
           git clone --depth 1 https://github.com/Ploos-AS/FellowNG.git "$PWD/fellowng-src"
