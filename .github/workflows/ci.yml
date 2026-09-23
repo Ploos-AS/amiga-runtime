@@ -38,8 +38,14 @@ jobs:
           if-no-files-found: warn
 
   runtime:
+    needs: regina-m68k
     runs-on: ubuntu-latest
     steps:
+      - name: Download AROS m68k Regina artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: aros-m68k-regina
+          path: aros-regina-out
       - uses: actions/checkout@v4
       - name: Repository checks
         run: make check
@@ -86,6 +92,27 @@ jobs:
           grep -qx 'acquisition=official-nightly-index' aros-cache/manifest.txt
           grep -qx 'target=amiga-m68k' aros-cache/manifest.txt
           cat aros-cache/manifest.txt
+      - name: Install Regina and RexxMast into prepared AROS m68k guest
+        run: |
+          sha256sum -c "$PWD/aros-regina-out/SHA256SUMS"
+          test -s "$PWD/aros-regina-out/regina.library"
+          test -s "$PWD/aros-regina-out/RexxMast"
+          install -m 0644 "$PWD/aros-regina-out/regina.library" "$PWD/aros-cache/system-root/Libs/regina.library"
+          mkdir -p "$PWD/aros-cache/system-root/Rexxc"
+          install -m 0755 "$PWD/aros-regina-out/RexxMast" "$PWD/aros-cache/system-root/Rexxc/RexxMast"
+          test -s "$PWD/aros-cache/system-root/Libs/regina.library"
+          test -s "$PWD/aros-cache/system-root/Rexxc/RexxMast"
+
+      - name: Qualify m68k ARexx guest execution
+        run: |
+          mkdir -p "$PWD/arexx-evidence"
+          docker run --rm \
+            -e AMIGA_RUNTIME_AREXX_TIMEOUT=90 \
+            -v "$PWD/aros-cache:/opt/amiga-runtime/aros" \
+            -v "$PWD/arexx-evidence:/work/evidence" \
+            amiga-runtime:m2 qualify-aros-arexx
+          jq -e '.status == "PASS" and .guest_arch == "m68k" and .guest_execution == true and .token == "AMIGA_RUNTIME_AREXX_OK"' "$PWD/arexx-evidence/arexx-result.json"
+          grep -Fq 'AMIGA_RUNTIME_AREXX_OK' "$PWD/arexx-evidence/arexx-guest.log"
       - name: Cache pinned Amiberry runtime
         id: amiberry-cache
         uses: actions/cache@v4
@@ -295,6 +322,8 @@ jobs:
           path: |
             evidence/
             runtime-evidence/
+            arexx-evidence/
+            aros-regina-out/
             amiberry-evidence/
             amiberry-runtime-evidence/
             fellowng-evidence/
