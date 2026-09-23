@@ -97,9 +97,10 @@ jobs:
           sha256sum -c "$PWD/aros-regina-out/SHA256SUMS"
           test -s "$PWD/aros-regina-out/regina.library"
           test -s "$PWD/aros-regina-out/RexxMast"
-          install -m 0644 "$PWD/aros-regina-out/regina.library" "$PWD/aros-cache/system-root/Libs/regina.library"
-          mkdir -p "$PWD/aros-cache/system-root/Rexxc"
-          install -m 0755 "$PWD/aros-regina-out/RexxMast" "$PWD/aros-cache/system-root/Rexxc/RexxMast"
+          sudo install -m 0644 "$PWD/aros-regina-out/regina.library" "$PWD/aros-cache/system-root/Libs/regina.library"
+          sudo mkdir -p "$PWD/aros-cache/system-root/Rexxc"
+          sudo install -m 0755 "$PWD/aros-regina-out/RexxMast" "$PWD/aros-cache/system-root/Rexxc/RexxMast"
+          sudo chown -R "$(id -u):$(id -g)" "$PWD/aros-cache/system-root"
           test -s "$PWD/aros-cache/system-root/Libs/regina.library"
           test -s "$PWD/aros-cache/system-root/Rexxc/RexxMast"
 
