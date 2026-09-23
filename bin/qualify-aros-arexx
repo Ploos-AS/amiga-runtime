@@ -110,8 +110,9 @@ Run >NIL: System:Rexxc/RexxMast
 Echo AMIGA_RUNTIME_AFTER_REXXMAST >Evidence:arexx-stage-after-rexxmast
 C:Wait 2
 Echo AMIGA_RUNTIME_BEFORE_RX >Evidence:arexx-stage-before-rx
-System:Rexxc/RX System:S/amiga-runtime-smoke.rexx >Evidence:arexx-guest.log
-Echo AMIGA_RUNTIME_RX_RETURNED >Evidence:arexx-stage-rx-returned
+Run >NIL: System:Rexxc/RX System:S/amiga-runtime-smoke.rexx >Evidence:arexx-guest.log
+C:Wait 5
+Echo AMIGA_RUNTIME_AFTER_RX_WAIT >Evidence:arexx-stage-after-rx-wait
 Echo AMIGA_RUNTIME_AREXX_DONE >Evidence:arexx-done
 EOF
 
@@ -132,7 +133,7 @@ fullscreen = 0
 window_width = 640
 window_height = 512
 EOF
-rm -f "$EVIDENCE/arexx-done" "$EVIDENCE/arexx-guest.log" "$EVIDENCE/arexx-stage-start" "$EVIDENCE/arexx-stage-before-rexxmast" "$EVIDENCE/arexx-stage-after-rexxmast" "$EVIDENCE/arexx-stage-before-rx" "$EVIDENCE/arexx-stage-rx-returned"
+rm -f "$EVIDENCE/arexx-done" "$EVIDENCE/arexx-guest.log" "$EVIDENCE/arexx-stage-start" "$EVIDENCE/arexx-stage-before-rexxmast" "$EVIDENCE/arexx-stage-after-rexxmast" "$EVIDENCE/arexx-stage-before-rx" "$EVIDENCE/arexx-stage-after-rx-wait"
 set +e
 XDG_RUNTIME_DIR=/tmp/amiga-runtime-xdg
 mkdir -p "$XDG_RUNTIME_DIR"
@@ -155,7 +156,7 @@ kill "$pid" 2>/dev/null || true
 wait "$pid" 2>/dev/null
 set -e
 
-if [ "$guest_ok" = true ] && grep -Fq "$TOKEN" "$EVIDENCE/arexx-guest.log"; then
+if [ "$guest_ok" = true ] && [ -s "$EVIDENCE/arexx-guest.log" ] && grep -Fq "$TOKEN" "$EVIDENCE/arexx-guest.log"; then
     python3 - "$EVIDENCE/arexx-result.json" <<'PY'
 import json, pathlib, sys
 p = pathlib.Path(sys.argv[1])
