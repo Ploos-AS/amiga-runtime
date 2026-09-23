@@ -114,6 +114,10 @@ If WARN
 Else
   Echo AMIGA_RUNTIME_REXX_PORT_READY >Evidence:arexx-port-ready
 EndIf
+C:List >Evidence:root-list.log
+C:Status >Evidence:root-status.log
+C:Which RexxMast >Evidence:which-rexxmast.log
+C:Which RX >Evidence:which-rx.log
 Echo AMIGA_RUNTIME_BEFORE_RX >Evidence:arexx-stage-before-rx
 Run >Evidence:rx-launch.log System:Rexxc/RX "say 'AMIGA_RUNTIME_AREXX_OK'" >Evidence:arexx-guest.log
 Echo AMIGA_RUNTIME_RX_LAUNCHED >Evidence:arexx-stage-rx-launched
