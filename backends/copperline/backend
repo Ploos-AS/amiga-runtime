@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 op=${1:-}; shift || true
-bin=${COPPERLINE_BIN:-/opt/amiga-runtime/copperline/copperline}
+bin=${COPPERLINE_BIN:-/opt/amiga-runtime/copperline/copperline-bin}
 json_escape(){ sed 's/\\/\\\\/g; s/"/\\"/g'; }
 case "$op" in
   probe)
