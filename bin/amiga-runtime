@@ -16,7 +16,7 @@ usage:
   amiga-runtime backends
   amiga-runtime compare [PROFILE] --emulators LIST
   amiga-runtime targets
-  amiga-runtime test PROGRAM [--runtime aros|fs-uae|amiberry|fellowng|free-native] [--profile PROFILE]
+  amiga-runtime test PROGRAM [--runtime aros|fs-uae|amiberry|fellowng|free-native] [--profile PROFILE]\n  amiga-runtime test-hunk PROGRAM [--profile PROFILE]
 EOF
 }
 
@@ -131,6 +131,20 @@ p.write_text(json.dumps(d,indent=2)+"\n")
 print(json.dumps(d,separators=(",",":")))
 raise SystemExit(0 if d["status"]=="PASS" else 1)
 PY
+        ;;
+    test-hunk)
+        shift
+        program=${1:-}
+        test -n "$program" || { usage >&2; exit 64; }
+        shift
+        profile=amiga-ocs-68000-1m
+        while [ "$#" -gt 0 ]; do
+            case "$1" in
+                --profile) profile=${2:?missing profile}; shift 2 ;;
+                *) echo "unknown argument: $1" >&2; exit 64 ;;
+            esac
+        done
+        exec backend-fs-uae run-hunk "$program" "$profile"
         ;;
     test)
         shift
