@@ -1,8 +1,10 @@
 #!/bin/sh
 set -eu
 
-program=${1:?usage: run-aros PROGRAM PROFILE}
-profile=${2:?usage: run-aros PROGRAM PROFILE}
+program=${1:?usage: run-aros PROGRAM PROFILE [ARGS...]}
+profile=${2:?usage: run-aros PROGRAM PROFILE [ARGS...]}
+shift 2
+payload_args="$*"
 PROFILES=${AMIGA_RUNTIME_PROFILES:-/opt/amiga-runtime/profiles}
 AROS_DIR=${AROS_RUNTIME_DIR:-/opt/amiga-runtime/aros}
 AROS_ISO=${AROS_BOOT_IMAGE_PREPARED:-"${AROS_DIR}/aros.iso"}
@@ -26,7 +28,7 @@ trap 'rm -rf "$tmp"' EXIT HUP INT TERM
 startup="$tmp/User-Startup"
 cat >"$startup" <<EOF
 Echo "amiga-runtime payload start"
-Evidence:payload --version >Evidence:guest-console.txt
+Evidence:payload $payload_args >Evidence:guest-console.txt
 Echo "\$RC" >Evidence:guest-rc.txt
 If "\$RC" EQ "0"
   Echo "$MARKER" >Evidence:$MARKER
