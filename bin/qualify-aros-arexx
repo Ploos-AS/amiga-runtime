@@ -110,9 +110,9 @@ Run >Evidence:rexxmast-launch.log System:Rexxc/RexxMast
 Echo AMIGA_RUNTIME_AFTER_REXXMAST >Evidence:arexx-stage-after-rexxmast
 C:Wait 5
 Echo AMIGA_RUNTIME_BEFORE_RX >Evidence:arexx-stage-before-rx
-System:Rexxc/RX System:S/amiga-runtime-smoke.rexx >Evidence:arexx-guest.log
-Echo AMIGA_RUNTIME_RX_RETURNED >Evidence:arexx-stage-rx-returned
-C:Wait 2
+Run >Evidence:rx-launch.log System:Rexxc/RX System:S/amiga-runtime-smoke.rexx >Evidence:arexx-guest.log
+Echo AMIGA_RUNTIME_RX_LAUNCHED >Evidence:arexx-stage-rx-launched
+C:Wait 10
 Echo AMIGA_RUNTIME_AFTER_RX_WAIT >Evidence:arexx-stage-after-rx-wait
 Echo AMIGA_RUNTIME_AREXX_DONE >Evidence:arexx-done
 EOF
@@ -134,7 +134,7 @@ fullscreen = 0
 window_width = 640
 window_height = 512
 EOF
-rm -f "$EVIDENCE/arexx-done" "$EVIDENCE/arexx-guest.log" "$EVIDENCE/arexx-stage-start" "$EVIDENCE/arexx-stage-before-rexxmast" "$EVIDENCE/arexx-stage-after-rexxmast" "$EVIDENCE/arexx-stage-before-rx" "$EVIDENCE/arexx-stage-rx-returned" "$EVIDENCE/arexx-stage-after-rx-wait" "$EVIDENCE/rexxmast-launch.log"
+rm -f "$EVIDENCE/arexx-done" "$EVIDENCE/arexx-guest.log" "$EVIDENCE/arexx-stage-start" "$EVIDENCE/arexx-stage-before-rexxmast" "$EVIDENCE/arexx-stage-after-rexxmast" "$EVIDENCE/arexx-stage-before-rx" "$EVIDENCE/arexx-stage-rx-launched" "$EVIDENCE/arexx-stage-after-rx-wait" "$EVIDENCE/rexxmast-launch.log" "$EVIDENCE/rx-launch.log"
 set +e
 XDG_RUNTIME_DIR=/tmp/amiga-runtime-xdg
 mkdir -p "$XDG_RUNTIME_DIR"
