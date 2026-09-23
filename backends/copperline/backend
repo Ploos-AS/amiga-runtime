@@ -6,7 +6,15 @@ json_escape(){ sed 's/\\/\\\\/g; s/"/\\"/g'; }
 case "$op" in
   probe)
     [ -x "$bin" ] || { printf '%s\n' '{"schema":1,"backend":"copperline","status":"unavailable"}'; exit 69; }
-    version=$("$bin" --version 2>&1 | head -n1 || true)
+    set +e
+    version=$("$bin" --version 2>&1)
+    rc=$?
+    set -e
+    version=$(printf '%s\n' "$version" | head -n1)
+    if [ "$rc" -ne 0 ] || [ -z "$version" ]; then
+      printf '%s\n' '{"schema":1,"backend":"copperline","status":"unavailable"}'
+      exit 69
+    fi
     printf '{"schema":1,"backend":"copperline","status":"available","version":"%s","automation":"headless"}\n' "$(printf '%s' "$version"|json_escape)"
     ;;
   qualify-aros-boot)
