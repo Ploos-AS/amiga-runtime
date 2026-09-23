@@ -54,13 +54,16 @@
 
 ## M4 — Multi-emulator qualification matrix
 
-**Backend policy:** `amiga-runtime` must support multiple independent Amiga emulators. FS-UAE remains the reference backend; Amiberry and FellowNG are first-class backend targets. A backend may be marked `experimental` until it provides deterministic automated execution, but it must use the same runtime/profile/evidence contract.
+**Backend policy:** `amiga-runtime` must support multiple independent Amiga emulators. FS-UAE remains the reference backend; Amiberry, FellowNG, and Copperline are first-class backend targets. A backend may be marked `experimental` until it provides deterministic automated execution, but it must use the same runtime/profile/evidence contract.
 
 - [x] Define emulator-neutral backend contract
 - [x] Keep FS-UAE as the first/reference backend
 - [x] Add Amiberry backend
-- [x] Add `--emulator fs-uae|amiberry|fellowng` selection
+- [x] Add `--emulator fs-uae|amiberry|fellowng|copperline` selection
 - [x] Add `compare --emulators ...` qualification mode
+- [x] Qualify FS-UAE, Amiberry, FellowNG, and Copperline together on GitHub Actions
+- [x] Pin and SHA-256 verify Copperline 0.21.0 before extraction
+- [x] Require deterministic Copperline headless guest-frame evidence
 - [ ] Run identical **m68k** runtime, machine profile, ARexx test and payload across selected emulators
 - [ ] Require m68k ARexx qualification on each supported emulator backend
   - [ ] Build/package AROS contrib Regina + RexxMast for the redistributable amiga-m68k CI guest (upstream AROS #866)
