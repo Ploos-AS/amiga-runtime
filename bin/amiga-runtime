@@ -77,7 +77,7 @@ case "${1:-}" in
     compare)
         shift
         profile=a1200-020-aros
-        emulators=fs-uae,amiberry,fellowng
+        emulators=fs-uae,amiberry,fellowng,copperline
         if [ "$#" -gt 0 ] && [ "${1#--}" = "$1" ]; then profile=$1; shift; fi
         while [ "$#" -gt 0 ]; do
             case "$1" in
