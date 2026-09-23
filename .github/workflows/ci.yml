@@ -216,7 +216,7 @@ jobs:
           test "$(cat runtime-evidence/AMIGA_RUNTIME_BOOT_OK)" = "AMIGA_RUNTIME_BOOT_OK"
       - name: Verify emulator-neutral qualification dispatch
         run: |
-          mkdir -p "$PWD/dispatch-fsuae" "$PWD/dispatch-amiberry" "$PWD/dispatch-fellowng"
+          mkdir -p "$PWD/dispatch-fsuae" "$PWD/dispatch-amiberry" "$PWD/dispatch-fellowng" "$PWD/dispatch-copperline"
           docker run --rm \
             -e AMIGA_RUNTIME_BOOT_TIMEOUT=30 \
             -v "$PWD/aros-cache:/opt/amiga-runtime/aros:ro" \
@@ -241,6 +241,12 @@ jobs:
           grep -q '"schema":"fellowng.runtime-result.v1"' "$PWD/dispatch-fellowng/fellowng-runtime.log"
           grep -q '"status":"pass"' "$PWD/dispatch-fellowng/fellowng-runtime.log"
 
+          docker run --rm \
+            -v "$PWD/copperline-cache:/opt/amiga-runtime/copperline:ro" \
+            -v "$PWD/dispatch-copperline:/work/evidence" \
+            amiga-runtime:m2 qualify-aros-boot a1200-020-aros --emulator copperline
+          jq -e '.status == "PASS" and .emulator == "copperline" and .guest_boot_proven == true' "$PWD/dispatch-copperline/result.json"
+
       - name: Compare all qualified emulator backends
         run: |
           mkdir -p "$PWD/compare-evidence"
@@ -250,11 +256,12 @@ jobs:
             -v "$PWD/aros-cache:/opt/amiga-runtime/aros:ro" \
             -v "$PWD/amiberry-cache:/opt/amiga-runtime/amiberry:ro" \
             -v "$PWD/fellowng-cache:/opt/fellowng:ro" \
+            -v "$PWD/copperline-cache:/opt/amiga-runtime/copperline:ro" \
             -v "$PWD/compare-evidence:/work/evidence" \
-            amiga-runtime:m2 compare a1200-020-aros --emulators fs-uae,amiberry,fellowng
+            amiga-runtime:m2 compare a1200-020-aros --emulators fs-uae,amiberry,fellowng,copperline
           jq -e '.status == "PASS"
-            and (.results | length) == 3
-            and ([.results[].emulator] | sort) == ["amiberry","fellowng","fs-uae"]
+            and (.results | length) == 4
+            and ([.results[].emulator] | sort) == ["amiberry","copperline","fellowng","fs-uae"]
             and all(.results[]; (.evidence_dir | type) == "string")
             and all(.results[]; has("result_json"))' "$PWD/compare-evidence/compare.json"
           jq -e '
@@ -296,6 +303,10 @@ jobs:
             dispatch-fsuae/
             dispatch-amiberry/
             dispatch-fellowng/
+            dispatch-copperline/
+            copperline-runtime-evidence/
+            copperline-evidence/
+            copperline-cache/manifest.txt
             compare-evidence/
             q3-core-evidence/
             amiberry-cache/manifest.txt
