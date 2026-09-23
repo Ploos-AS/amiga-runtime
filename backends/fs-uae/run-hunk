@@ -25,9 +25,17 @@ sha256sum "$program" > "$EVIDENCE/payload.sha256"
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT HUP INT TERM
-startup="$tmp/User-Startup"
+startup_path_file="$AROS_DIR/system-startup-sequence-path.txt"
+test -s "$startup_path_file" || { echo "AROS Startup-Sequence path not prepared: $startup_path_file" >&2; exit 69; }
+startup_path=$(cat "$startup_path_file")
+case "$startup_path" in
+    "$AROS_DIR/system-root/"*) guest_startup="/$(printf '%s' "$startup_path" | sed "s#^$AROS_DIR/system-root/##")" ;;
+    *) echo "invalid AROS Startup-Sequence path: $startup_path" >&2; exit 69 ;;
+esac
+startup="$tmp/Startup-Sequence"
 cat >"$startup" <<EOF
 Echo "amiga-runtime payload start"
+C:Assign >NIL: Evidence "$EVIDENCE"
 Evidence:payload $payload_args >Evidence:guest-console.txt
 Echo "\$RC" >Evidence:guest-rc.txt
 If "\$RC" EQ "0"
@@ -36,7 +44,7 @@ EndIf
 EOF
 guest_iso="$EVIDENCE/aros-payload.iso"
 rm -f "$guest_iso"
-xorriso -indev "$AROS_ISO" -outdev "$guest_iso" -update "$startup" /S/User-Startup -commit >/dev/null 2>&1
+xorriso -indev "$AROS_ISO" -outdev "$guest_iso" -update "$startup" "$guest_startup" -commit >/dev/null 2>&1
 test -s "$guest_iso"
 
 config="$EVIDENCE/fs-uae.conf"
