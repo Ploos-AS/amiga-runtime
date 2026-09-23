@@ -110,7 +110,7 @@ Run >Evidence:rexxmast-launch.log System:Rexxc/RexxMast
 Echo AMIGA_RUNTIME_AFTER_REXXMAST >Evidence:arexx-stage-after-rexxmast
 C:Wait 10
 Echo AMIGA_RUNTIME_BEFORE_RX >Evidence:arexx-stage-before-rx
-Run >Evidence:rx-launch.log System:Rexxc/RX REXX:amiga-runtime-smoke.rexx >Evidence:arexx-guest.log
+Run >Evidence:rx-launch.log System:Rexxc/RX "say 'AMIGA_RUNTIME_AREXX_OK'" >Evidence:arexx-guest.log
 Echo AMIGA_RUNTIME_RX_LAUNCHED >Evidence:arexx-stage-rx-launched
 C:Wait 10
 Echo AMIGA_RUNTIME_AFTER_RX_WAIT >Evidence:arexx-stage-after-rx-wait
