@@ -41,12 +41,12 @@ jobs:
     needs: regina-m68k
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - name: Download AROS m68k Regina artifacts
         uses: actions/download-artifact@v4
         with:
           name: aros-m68k-regina
           path: aros-regina-out
-      - uses: actions/checkout@v4
       - name: Repository checks
         run: make check
       - name: Build runtime image
