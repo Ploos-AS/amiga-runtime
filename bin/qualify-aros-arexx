@@ -108,7 +108,12 @@ C:Assign >NIL: PROGDIR: System:Rexxc
 Echo AMIGA_RUNTIME_BEFORE_REXXMAST >Evidence:arexx-stage-before-rexxmast
 Run >Evidence:rexxmast-launch.log System:Rexxc/RexxMast
 Echo AMIGA_RUNTIME_AFTER_REXXMAST >Evidence:arexx-stage-after-rexxmast
-C:Wait 10
+C:WaitForPort REXX >Evidence:arexx-waitforport.log
+If WARN
+  Echo AMIGA_RUNTIME_REXX_PORT_MISSING >Evidence:arexx-port-missing
+Else
+  Echo AMIGA_RUNTIME_REXX_PORT_READY >Evidence:arexx-port-ready
+EndIf
 Echo AMIGA_RUNTIME_BEFORE_RX >Evidence:arexx-stage-before-rx
 Run >Evidence:rx-launch.log System:Rexxc/RX "say 'AMIGA_RUNTIME_AREXX_OK'" >Evidence:arexx-guest.log
 Echo AMIGA_RUNTIME_RX_LAUNCHED >Evidence:arexx-stage-rx-launched
