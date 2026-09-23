@@ -2,7 +2,7 @@
 set -eu
 
 program=${1:?usage: run-hunk PROGRAM PROFILE [ARGS...]}
-profile=${2:?usage: run-aros PROGRAM PROFILE [ARGS...]}
+profile=${2:?usage: run-hunk PROGRAM PROFILE [ARGS...]}
 shift 2
 payload_args="$*"
 PROFILES=${AMIGA_RUNTIME_PROFILES:-/opt/amiga-runtime/profiles}
