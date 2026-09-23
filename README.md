@@ -11,6 +11,7 @@ Initial scope:
 - Linux container image suitable for CI runners
 - AROS as the redistributable runtime baseline
 - FS-UAE integration point for emulated execution
+- four qualified emulator backends: FS-UAE, Amiberry, FellowNG, and Copperline
 - Emulator-neutral backend contract with FS-UAE, Amiberry, and FellowNG targets
 - FellowNG integration path for deterministic CLI/CI qualification as its portable runtime matures
 - standard runtime profiles
@@ -49,4 +50,4 @@ See [ROADMAP.md](ROADMAP.md) and [docs/M0_ARCHITECTURE.md](docs/M0_ARCHITECTURE.
 
 ## Emulator backends
 
-The runtime uses an emulator-neutral backend contract. FS-UAE is the reference implementation; Amiberry and FellowNG are first-class targets. See [docs/EMULATOR_BACKEND_CONTRACT.md](docs/EMULATOR_BACKEND_CONTRACT.md).
+The runtime uses an emulator-neutral backend contract. FS-UAE is the reference implementation; Amiberry, FellowNG, and Copperline are first-class targets. Copperline uses its bundled redistributable AROS boot ROM for deterministic headless guest-frame qualification. See [docs/EMULATOR_BACKEND_CONTRACT.md](docs/EMULATOR_BACKEND_CONTRACT.md).
