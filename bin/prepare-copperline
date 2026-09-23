@@ -7,6 +7,7 @@ mkdir -p "$DEST"
 asset="${COPPERLINE_LINUX_AMD64_ASSET}"
 url="$COPPERLINE_RELEASE_REPOSITORY/releases/download/v$COPPERLINE_VERSION/$asset"
 curl -fL --retry 3 "$url" -o "$DEST/copperline"
+printf '%s  %s\n' "$COPPERLINE_LINUX_AMD64_SHA256" "$DEST/copperline" | sha256sum -c -
 chmod 0755 "$DEST/copperline"
 # AppImages require FUSE when executed directly. Extract once so the runtime
 # works inside unprivileged OCI containers and GitHub-hosted runners.
@@ -16,4 +17,4 @@ trap 'rm -rf "$tmp"' EXIT HUP INT TERM
 rm -rf "$DEST/appdir"
 mv "$tmp/squashfs-root" "$DEST/appdir"
 ln -sf "$DEST/appdir/AppRun" "$DEST/copperline-bin"
-printf 'version=%s\nasset=%s\nsource=%s\n' "$COPPERLINE_VERSION" "$asset" "$COPPERLINE_RELEASE_REPOSITORY" >"$DEST/manifest.txt"
+printf 'version=%s\nasset=%s\nsha256=%s\nsource=%s\n' "$COPPERLINE_VERSION" "$asset" "$COPPERLINE_LINUX_AMD64_SHA256" "$COPPERLINE_RELEASE_REPOSITORY" >"$DEST/manifest.txt"
