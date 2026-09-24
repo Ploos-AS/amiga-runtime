@@ -36,25 +36,25 @@ s = p.read_text()
 s = s.replace(
     'int main(int argc, char **argv)\n{\n',
     'int main(int argc, char **argv)\n{\n'
-    '   BPTR amiga_runtime_main_marker = Open("T:amiga-runtime-rexxmast-main-enter", MODE_NEWFILE);\n'
+    '   BPTR amiga_runtime_main_marker = Open("RAM:amiga-runtime-rexxmast-main-enter", MODE_NEWFILE);\n'
     '   if (amiga_runtime_main_marker) Close(amiga_runtime_main_marker);\n'
 )
 s = s.replace(
     '   if (!server) {\n',
-    '   amiga_runtime_main_marker = Open(server ? "T:amiga-runtime-rexxmaster-created" : "T:amiga-runtime-rexxmaster-create-failed", MODE_NEWFILE);\n'
+    '   amiga_runtime_main_marker = Open(server ? "RAM:amiga-runtime-rexxmaster-created" : "RAM:amiga-runtime-rexxmaster-create-failed", MODE_NEWFILE);\n'
     '   if (amiga_runtime_main_marker) Close(amiga_runtime_main_marker);\n'
     '   if (!server) {\n'
 )
 s = s.replace(
     'void server_process(void)\n{\n',
     'void server_process(void)\n{\n'
-    '   BPTR amiga_runtime_marker = Open("T:amiga-runtime-rexxmaster-enter", MODE_NEWFILE);\n'
+    '   BPTR amiga_runtime_marker = Open("RAM:amiga-runtime-rexxmaster-enter", MODE_NEWFILE);\n'
     '   if (amiga_runtime_marker) Close(amiga_runtime_marker);\n'
 )
 s = s.replace(
     '   port = CreatePort("REXX", 0);\n\n',
     '   port = CreatePort("REXX", 0);\n'
-    '   amiga_runtime_marker = Open(port ? "T:amiga-runtime-rexx-port-ready" : "T:amiga-runtime-rexx-port-failed", MODE_NEWFILE);\n'
+    '   amiga_runtime_marker = Open(port ? "RAM:amiga-runtime-rexx-port-ready" : "RAM:amiga-runtime-rexx-port-failed", MODE_NEWFILE);\n'
     '   if (amiga_runtime_marker) Close(amiga_runtime_marker);\n'
     '   if (!port) return;\n\n'
 )
