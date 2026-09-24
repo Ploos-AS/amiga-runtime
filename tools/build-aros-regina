@@ -19,6 +19,12 @@ git -C "$WORK/AROS" submodule update --init --recursive
 git clone --filter=blob:none "$CONTRIB_REPO" "$WORK/AROS/contrib"
 git -C "$WORK/AROS/contrib" checkout --detach "$CONTRIB_REV"
 
+# Qualification instrumentation: DEBUG enables RexxMast's existing bug()
+# diagnostics around server startup, message dispatch and RexxStart().
+# Keep this as a build-time patch; upstream source remains pinned and unmodified.
+sed -i 's/^#define DEBUG 0$/#define DEBUG 1/' "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c"
+grep -qx '#define DEBUG 1' "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c"
+
 mkdir -p "$WORK/toolchain" "$WORK/toolchain-build"
 cd "$WORK/toolchain-build"
 "$WORK/AROS/configure" --target=amiga-m68k --with-aros-toolchain-install="$WORK/toolchain"
