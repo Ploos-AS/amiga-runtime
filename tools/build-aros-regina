@@ -25,6 +25,32 @@ git -C "$WORK/AROS/contrib" checkout --detach "$CONTRIB_REV"
 sed -i 's/^#define DEBUG 0$/#define DEBUG 1/' "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c"
 grep -qx '#define DEBUG 1' "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c"
 
+# DEBUG uses bug(), which goes to the emulator debug channel rather than the
+# redirected DOS output. Add guest-visible marker files so qualification can
+# locate server startup failures without depending on serial/debug capture.
+python3 - "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c" <<'PY'
+from pathlib import Path
+import sys
+p = Path(sys.argv[1])
+s = p.read_text()
+s = s.replace(
+    'void server_process(void)\n{\n',
+    'void server_process(void)\n{\n'
+    '   BPTR amiga_runtime_marker = Open("T:amiga-runtime-rexxmaster-enter", MODE_NEWFILE);\n'
+    '   if (amiga_runtime_marker) Close(amiga_runtime_marker);\n'
+)
+s = s.replace(
+    '   port = CreatePort("REXX", 0);\n\n',
+    '   port = CreatePort("REXX", 0);\n'
+    '   amiga_runtime_marker = Open(port ? "T:amiga-runtime-rexx-port-ready" : "T:amiga-runtime-rexx-port-failed", MODE_NEWFILE);\n'
+    '   if (amiga_runtime_marker) Close(amiga_runtime_marker);\n'
+    '   if (!port) return;\n\n'
+)
+p.write_text(s)
+PY
+grep -q 'amiga-runtime-rexxmaster-enter' "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c"
+grep -q 'amiga-runtime-rexx-port-ready' "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c"
+
 mkdir -p "$WORK/toolchain" "$WORK/toolchain-build"
 cd "$WORK/toolchain-build"
 "$WORK/AROS/configure" --target=amiga-m68k --with-aros-toolchain-install="$WORK/toolchain"
