@@ -108,15 +108,18 @@ C:Assign >NIL: PROGDIR: System:Rexxc
 Echo AMIGA_RUNTIME_BEFORE_REXXMAST >Evidence:arexx-stage-before-rexxmast
 Run >Evidence:rexxmast-launch.log System:Rexxc/RexxMast
 Echo AMIGA_RUNTIME_AFTER_REXXMAST >Evidence:arexx-stage-after-rexxmast
-C:List RAM: ALL >Evidence:ram-after-rexxmast.log
 C:WaitForPort REXX >Evidence:arexx-waitforport.log
-C:List RAM: ALL >Evidence:ram-after-waitforport.log
 C:Copy RAM:amiga-runtime-rexxmast-main-enter Evidence:rexxmast-main-enter QUIET
 C:Copy RAM:amiga-runtime-rexxmaster-created Evidence:rexxmaster-created QUIET
 C:Copy RAM:amiga-runtime-rexxmaster-create-failed Evidence:rexxmaster-create-failed QUIET
 C:Copy RAM:amiga-runtime-rexxmaster-enter Evidence:rexxmaster-enter QUIET
 C:Copy RAM:amiga-runtime-rexx-port-ready Evidence:rexx-port-ready-internal QUIET
 C:Copy RAM:amiga-runtime-rexx-port-failed Evidence:rexx-port-failed-internal QUIET
+If EXISTS RAM:amiga-runtime-rexx-port-ready
+  Echo AMIGA_RUNTIME_REXX_PORT_READY >Evidence:arexx-port-ready
+Else
+  Echo AMIGA_RUNTIME_REXX_PORT_MISSING >Evidence:arexx-port-missing
+EndIf
 If WARN
   Echo AMIGA_RUNTIME_REXX_PORT_MISSING >Evidence:arexx-port-missing
 Else
