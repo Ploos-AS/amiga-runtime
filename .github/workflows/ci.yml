@@ -15,11 +15,19 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
+      - name: Cache AROS m68k Regina artifacts
+        id: regina-cache
+        uses: actions/cache@v4
+        with:
+          path: aros-regina-out
+          key: amiga-runtime-aros-regina-v1-${{ runner.os }}-${{ hashFiles('tools/build-aros-regina') }}
       - name: Install AROS build prerequisites
+        if: steps.regina-cache.outputs.cache-hit != 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential bison flex git libgmp-dev libmpc-dev libmpfr-dev libpng-dev netpbm python3 python3-mako texinfo
       - name: Build Regina and RexxMast for AROS m68k
+        if: steps.regina-cache.outputs.cache-hit != 'true'
         run: |
           mkdir -p "$PWD/aros-regina-out"
           AROS_REGINA_OUT="$PWD/aros-regina-out" JOBS=2 sh ./tools/build-aros-regina
