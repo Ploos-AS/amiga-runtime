@@ -6,7 +6,7 @@ All emulator backends in `amiga-runtime` implement the same logical contract.
 
 - `fs-uae` — reference backend; currently qualified.
 - `amiberry` — first-class target; adapter pending.
-- `fellowng` — first-class independent-lineage target; experimental until FellowNG exposes deterministic portable CLI automation.
+- `fellowng` — first-class independent-lineage target; deterministic portable CLI automation is available through the frozen `fellowng.runtime-result.v1` contract, with integration qualification tracked separately.
 
 ## Required operations
 
