@@ -106,8 +106,6 @@ C:Assign >NIL: ENV: RAM:
 C:Assign >NIL: ENVARC: RAM:
 C:Assign >NIL: PROGDIR: System:Rexxc
 Echo AMIGA_RUNTIME_BEFORE_REXXMAST >Evidence:arexx-stage-before-rexxmast
-System:Rexxc/RexxMast >Evidence:rexxmast-direct.log
-Echo $RC >Evidence:rexxmast-direct-rc.log
 Run >Evidence:rexxmast-launch.log System:Rexxc/RexxMast
 Echo AMIGA_RUNTIME_AFTER_REXXMAST >Evidence:arexx-stage-after-rexxmast
 C:List RAM: ALL >Evidence:ram-after-rexxmast.log
