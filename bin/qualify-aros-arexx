@@ -109,6 +109,9 @@ Echo AMIGA_RUNTIME_BEFORE_REXXMAST >Evidence:arexx-stage-before-rexxmast
 Run >Evidence:rexxmast-launch.log System:Rexxc/RexxMast
 Echo AMIGA_RUNTIME_AFTER_REXXMAST >Evidence:arexx-stage-after-rexxmast
 C:WaitForPort REXX >Evidence:arexx-waitforport.log
+C:Copy T:amiga-runtime-rexxmast-main-enter Evidence:rexxmast-main-enter QUIET
+C:Copy T:amiga-runtime-rexxmaster-created Evidence:rexxmaster-created QUIET
+C:Copy T:amiga-runtime-rexxmaster-create-failed Evidence:rexxmaster-create-failed QUIET
 C:Copy T:amiga-runtime-rexxmaster-enter Evidence:rexxmaster-enter QUIET
 C:Copy T:amiga-runtime-rexx-port-ready Evidence:rexx-port-ready-internal QUIET
 C:Copy T:amiga-runtime-rexx-port-failed Evidence:rexx-port-failed-internal QUIET
