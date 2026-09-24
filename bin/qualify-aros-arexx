@@ -110,6 +110,11 @@ Run >Evidence:rexxmast-launch.log System:Rexxc/RexxMast
 Echo AMIGA_RUNTIME_AFTER_REXXMAST >Evidence:arexx-stage-after-rexxmast
 C:WaitForPort REXX >Evidence:arexx-waitforport.log
 Echo AMIGA_RUNTIME_AFTER_WAITFORPORT >Evidence:arexx-stage-after-waitforport
+If WARN
+  Echo AMIGA_RUNTIME_WAITFORPORT_WARN >Evidence:arexx-waitforport-warn
+Else
+  Echo AMIGA_RUNTIME_WAITFORPORT_OK >Evidence:arexx-waitforport-ok
+EndIf
 C:Copy RAM:amiga-runtime-rexxmast-main-enter Evidence:rexxmast-main-enter QUIET
 C:Copy RAM:amiga-runtime-rexxmaster-created Evidence:rexxmaster-created QUIET
 C:Copy RAM:amiga-runtime-rexxmaster-create-failed Evidence:rexxmaster-create-failed QUIET
@@ -121,7 +126,6 @@ If EXISTS RAM:amiga-runtime-rexx-port-ready
 Else
   Echo AMIGA_RUNTIME_REXX_PORT_MISSING >Evidence:arexx-port-missing
 EndIf
-If WARN
   Echo AMIGA_RUNTIME_REXX_PORT_MISSING >Evidence:arexx-port-missing
 Else
   Echo AMIGA_RUNTIME_REXX_PORT_READY >Evidence:arexx-port-ready
@@ -155,7 +159,7 @@ fullscreen = 0
 window_width = 640
 window_height = 512
 EOF
-rm -f "$EVIDENCE/arexx-done" "$EVIDENCE/arexx-guest.log" "$EVIDENCE/arexx-stage-start" "$EVIDENCE/arexx-stage-before-rexxmast" "$EVIDENCE/arexx-stage-after-rexxmast" "$EVIDENCE/arexx-stage-after-waitforport" "$EVIDENCE/arexx-stage-before-rx" "$EVIDENCE/arexx-stage-rx-launched" "$EVIDENCE/arexx-stage-after-rx-wait" "$EVIDENCE/rexxmast-launch.log" "$EVIDENCE/rx-launch.log"
+rm -f "$EVIDENCE/arexx-done" "$EVIDENCE/arexx-guest.log" "$EVIDENCE/arexx-stage-start" "$EVIDENCE/arexx-stage-before-rexxmast" "$EVIDENCE/arexx-stage-after-rexxmast" "$EVIDENCE/arexx-stage-after-waitforport" "$EVIDENCE/arexx-waitforport-ok" "$EVIDENCE/arexx-waitforport-warn" "$EVIDENCE/arexx-stage-before-rx" "$EVIDENCE/arexx-stage-rx-launched" "$EVIDENCE/arexx-stage-after-rx-wait" "$EVIDENCE/rexxmast-launch.log" "$EVIDENCE/rx-launch.log"
 set +e
 XDG_RUNTIME_DIR=/tmp/amiga-runtime-xdg
 mkdir -p "$XDG_RUNTIME_DIR"
