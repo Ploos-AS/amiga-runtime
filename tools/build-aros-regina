@@ -105,7 +105,6 @@ sha256sum "$OUT/regina.library" "$OUT/RexxMast" > "$OUT/SHA256SUMS"
   echo "contrib_revision=$CONTRIB_REV"
   echo "target=amiga-m68k"
 } > "$OUT/provenance.env"
- "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c"
 
 # DEBUG uses bug(), which goes to the emulator debug channel rather than the
 # redirected DOS output. Add guest-visible marker files so qualification can
