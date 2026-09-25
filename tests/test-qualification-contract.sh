@@ -40,7 +40,7 @@ EOF
 # A valid contract must reach the classic backend. Missing private assets is
 # expected here and proves validation/routing completed without proprietary data.
 set +e
-PATH="$tmp/bin:$PATH" sh bin/qualify-contract "$tmp/good" >/tmp/contract-good.out 2>/tmp/contract-good.err
+PATH="$tmp/bin:$PATH" sh sh bin/qualify-contract "$tmp/good" >/tmp/contract-good.out 2>/tmp/contract-good.err
 rc=$?
 set -e
 printf "good rc=%s\n" "$rc" >&2
@@ -53,7 +53,7 @@ import json,sys
 p=sys.argv[1]; c=json.load(open(p)); c["payload"]["programs"][1]="../escape"; open(p,"w").write(json.dumps(c))
 PY
 set +e
-PATH="$tmp/bin:$PATH" bin/qualify-contract "$tmp/traversal" >/tmp/contract-bad.out 2>/tmp/contract-bad.err
+PATH="$tmp/bin:$PATH" sh bin/qualify-contract "$tmp/traversal" >/tmp/contract-bad.out 2>/tmp/contract-bad.err
 rc=$?
 set -e
 printf "traversal rc=%s\n" "$rc" >&2
@@ -65,7 +65,7 @@ import json,sys
 p=sys.argv[1]; c=json.load(open(p)); c["result"]["required_lines"]=[]; open(p,"w").write(json.dumps(c))
 PY
 set +e
-PATH="$tmp/bin:$PATH" bin/qualify-contract "$tmp/no-lines" >/tmp/contract-lines.out 2>/tmp/contract-lines.err
+PATH="$tmp/bin:$PATH" sh bin/qualify-contract "$tmp/no-lines" >/tmp/contract-lines.out 2>/tmp/contract-lines.err
 rc=$?
 set -e
 printf "no-lines rc=%s\n" "$rc" >&2
