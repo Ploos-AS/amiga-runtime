@@ -33,13 +33,14 @@ COPY bin/prepare-aros-guest-marker /usr/local/bin/prepare-aros-guest-marker
 COPY bin/run-aros /usr/local/bin/run-aros
 COPY bin/qualify-aros-boot /usr/local/bin/qualify-aros-boot
 COPY bin/qualify-aros-arexx /usr/local/bin/qualify-aros-arexx
+COPY bin/qualify-contract /usr/local/bin/qualify-contract
 COPY lib /opt/amiga-runtime/lib
 COPY profiles /opt/amiga-runtime/profiles
 COPY runtime /opt/amiga-runtime/runtime
 COPY backends /opt/amiga-runtime/backends
 
-RUN chmod 0755 /usr/local/bin/amiga-runtime /usr/local/bin/prepare-aros /usr/local/bin/prepare-aros-regina /usr/local/bin/prepare-amiberry /usr/local/bin/prepare-copperline /usr/local/bin/prepare-aros-guest-marker /usr/local/bin/run-aros /usr/local/bin/qualify-aros-boot /usr/local/bin/qualify-aros-arexx \
-    && chmod 0755 /opt/amiga-runtime/backends/fs-uae/backend /opt/amiga-runtime/backends/fs-uae/qualify-aros-boot /opt/amiga-runtime/backends/fs-uae/run-aros /opt/amiga-runtime/backends/fs-uae/run-hunk /opt/amiga-runtime/backends/fs-uae/run-native-rom /opt/amiga-runtime/backends/amiberry/backend /opt/amiga-runtime/backends/fellowng/backend /opt/amiga-runtime/backends/copperline/backend \
+RUN chmod 0755 /usr/local/bin/amiga-runtime /usr/local/bin/prepare-aros /usr/local/bin/prepare-aros-regina /usr/local/bin/prepare-amiberry /usr/local/bin/prepare-copperline /usr/local/bin/prepare-aros-guest-marker /usr/local/bin/run-aros /usr/local/bin/qualify-aros-boot /usr/local/bin/qualify-aros-arexx /usr/local/bin/qualify-contract \
+    && chmod 0755 /opt/amiga-runtime/backends/fs-uae/backend /opt/amiga-runtime/backends/fs-uae/qualify-aros-boot /opt/amiga-runtime/backends/fs-uae/run-aros /opt/amiga-runtime/backends/fs-uae/run-hunk /opt/amiga-runtime/backends/fs-uae/qualify-classic-contract /opt/amiga-runtime/backends/fs-uae/run-native-rom /opt/amiga-runtime/backends/amiberry/backend /opt/amiga-runtime/backends/fellowng/backend /opt/amiga-runtime/backends/copperline/backend \
     && ln -sf /opt/amiga-runtime/backends/fs-uae/backend /usr/local/bin/backend-fs-uae \
     && ln -sf /opt/amiga-runtime/backends/amiberry/backend /usr/local/bin/backend-amiberry \
     && ln -sf /opt/amiga-runtime/backends/fellowng/backend /usr/local/bin/backend-fellowng \
