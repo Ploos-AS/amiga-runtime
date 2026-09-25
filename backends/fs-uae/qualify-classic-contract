@@ -21,6 +21,30 @@ rm -rf "$EVIDENCE/Test"
 mkdir -p "$EVIDENCE/Test"
 cp -R "$payload"/. "$EVIDENCE/Test/"
 
+# Work on an ephemeral copy of the user-supplied system. Proprietary files
+# remain outside the repository and artifacts; the source tree is never modified.
+rm -rf "$EVIDENCE/System"
+mkdir -p "$EVIDENCE/System"
+cp -R "$SYSTEM"/. "$EVIDENCE/System/"
+test -f "$EVIDENCE/System/S/Startup-Sequence" || {
+    echo "AmigaOS system has no S/Startup-Sequence" >&2
+    exit 66
+}
+cp "$EVIDENCE/System/S/Startup-Sequence" "$EVIDENCE/System/S/Startup-Sequence.amiga-runtime-original"
+script=$(python3 - "$contract" <<'PY'
+import json,sys
+c=json.load(open(sys.argv[1]))
+p=c.get("payload",{}).get("script")
+if not p: raise SystemExit("contract has no payload.script")
+print(p)
+PY
+)
+case "$script" in /*|*".."*) echo "unsafe payload.script" >&2; exit 65 ;; esac
+{
+    printf '\n; amiga-runtime classic qualification hook\n'
+    printf 'Execute TEST:%s\n' "$script"
+} >> "$EVIDENCE/System/S/Startup-Sequence"
+
 python3 - "$contract" "$EVIDENCE/Test" <<'PY'
 import json,pathlib,sys
 c=json.load(open(sys.argv[1])); root=pathlib.Path(sys.argv[2]).resolve()
@@ -58,7 +82,7 @@ cat >"$config" <<EOF
 amiga_model = $model
 kickstart_file = $ROM
 cpu = $cpu
-hard_drive_0 = $SYSTEM
+hard_drive_0 = $EVIDENCE/System
 hard_drive_0_label = DH0
 hard_drive_1 = $EVIDENCE/Test
 hard_drive_1_label = TEST
@@ -67,10 +91,12 @@ uae_cpu_speed = max
 fullscreen = 0
 EOF
 
-cat >"$EVIDENCE/RUN-ME.txt" <<'EOF'
+cat >"$EVIDENCE/RUN-ME.txt" <<EOF
 Classic AmigaOS qualification payload is mounted as TEST:.
-Execute the script named by payload.script in amiga-runtime.json.
-Result logs and required markers are also defined by that contract.
+The temporary SYSTEM: copy has been instrumented to execute:
+  Execute TEST:$script
+Result logs and required markers are defined by amiga-runtime.json.
+The source AmigaOS system directory is never modified.
 EOF
 
 XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/tmp/amiga-runtime-xdg}
