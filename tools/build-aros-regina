@@ -27,7 +27,12 @@ from pathlib import Path
 import re, sys
 p = Path(sys.argv[1])
 s = p.read_text()
-s, n = re.subn(r'^#define\s+DEBUG\s+0\s*$', '#define DEBUG 1', s, count=1, flags=re.M)
+lines = s.splitlines()
+matches = [i for i, line in enumerate(lines) if line.split() == ['#define', 'DEBUG', '0']]
+if len(matches) != 1: raise SystemExit('could not locate unique RexxMast DEBUG definition')
+lines[matches[0]] = '#define DEBUG 1'
+s = '\n'.join(lines) + ('\n' if s.endswith('\n') else '')
+n = 1
 if n != 1: raise SystemExit("could not patch RexxMast DEBUG definition")
 p.write_text(s)
 PYDEBUG
