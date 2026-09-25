@@ -91,14 +91,14 @@ uae_cpu_speed = max
 fullscreen = 0
 EOF
 
-bsdsocket=$(python3 - "$contract" <<\'PY\'
+bsdsocket=$(python3 - "$contract" <<'PY'
 import json,sys
 c=json.load(open(sys.argv[1]))
 print("1" if c.get("requirements",{}).get("bsdsocket_library") is True else "0")
 PY
 )
 if test "$bsdsocket" = 1; then
-    printf \'bsdsocket_library = 1\\n\' >>"$config"
+    printf 'bsdsocket_library = 1\n' >>"$config"
 fi
 
 cat >"$EVIDENCE/RUN-ME.txt" <<EOF
