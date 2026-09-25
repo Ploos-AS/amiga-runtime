@@ -48,8 +48,7 @@ s = s.replace(
 s = s.replace(
     'void server_process(void)\n{\n',
     'void server_process(void)\n{\n'
-    '   BPTR amiga_runtime_marker = Open("RAM:amiga-runtime-rexxmaster-enter", MODE_NEWFILE);\n'
-    '   if (amiga_runtime_marker) Close(amiga_runtime_marker);\n'
+    '   BPTR amiga_runtime_marker;\n'
 )
 s = s.replace(
     '   port = CreatePort("REXX", 0);\n\n',
