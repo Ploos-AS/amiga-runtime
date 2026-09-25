@@ -2,7 +2,9 @@
 set -eu
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
-mkdir -p "$tmp/good/Libs" "$tmp/good/C" "$tmp/good/S" "$tmp/good/T"
+mkdir -p "$tmp/good/Libs" "$tmp/good/C" "$tmp/good/S" "$tmp/good/T" "$tmp/bin"
+cp "$PWD/tests/contract/bin/backend-fs-uae" "$tmp/bin/backend-fs-uae"
+chmod +x "$tmp/bin/backend-fs-uae"
 : >"$tmp/good/Libs/demo.library"
 : >"$tmp/good/C/test-a"
 : >"$tmp/good/C/test-b"
@@ -38,7 +40,7 @@ EOF
 # A valid contract must reach the classic backend. Missing private assets is
 # expected here and proves validation/routing completed without proprietary data.
 set +e
-PATH="$PWD/tests/contract/bin:$PATH" bin/qualify-contract "$tmp/good" >/tmp/contract-good.out 2>/tmp/contract-good.err
+PATH="$tmp/bin:$PATH" bin/qualify-contract "$tmp/good" >/tmp/contract-good.out 2>/tmp/contract-good.err
 rc=$?
 set -e
 test "$rc" -eq 69
@@ -50,7 +52,7 @@ import json,sys
 p=sys.argv[1]; c=json.load(open(p)); c["payload"]["programs"][1]="../escape"; open(p,"w").write(json.dumps(c))
 PY
 set +e
-PATH="$PWD/tests/contract/bin:$PATH" bin/qualify-contract "$tmp/traversal" >/tmp/contract-bad.out 2>/tmp/contract-bad.err
+PATH="$tmp/bin:$PATH" bin/qualify-contract "$tmp/traversal" >/tmp/contract-bad.out 2>/tmp/contract-bad.err
 rc=$?
 set -e
 test "$rc" -ne 0
@@ -62,7 +64,7 @@ import json,sys
 p=sys.argv[1]; c=json.load(open(p)); c["result"]["required_lines"]=[]; open(p,"w").write(json.dumps(c))
 PY
 set +e
-PATH="$PWD/tests/contract/bin:$PATH" bin/qualify-contract "$tmp/no-lines" >/tmp/contract-lines.out 2>/tmp/contract-lines.err
+PATH="$tmp/bin:$PATH" bin/qualify-contract "$tmp/no-lines" >/tmp/contract-lines.out 2>/tmp/contract-lines.err
 rc=$?
 set -e
 test "$rc" -ne 0
