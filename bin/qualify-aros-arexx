@@ -126,10 +126,6 @@ If EXISTS RAM:amiga-runtime-rexx-port-ready
 Else
   Echo AMIGA_RUNTIME_REXX_PORT_MISSING >Evidence:arexx-port-missing
 EndIf
-  Echo AMIGA_RUNTIME_REXX_PORT_MISSING >Evidence:arexx-port-missing
-Else
-  Echo AMIGA_RUNTIME_REXX_PORT_READY >Evidence:arexx-port-ready
-EndIf
 C:List >Evidence:root-list.log
 C:Status >Evidence:root-status.log
 C:Which RexxMast >Evidence:which-rexxmast.log
