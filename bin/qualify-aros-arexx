@@ -209,4 +209,10 @@ d.update(status="FAIL", guest_execution=False,
 p.write_text(json.dumps(d, indent=2) + "\n")
 PY
 echo "AROS m68k ARexx guest execution: FAIL" >&2
+for f in arexx-fs-uae.stdout.log arexx-fs-uae.stderr.log arexx-guest.log rexxmast-launch.log rx-launch.log arexx-stage-before-rexxmast arexx-stage-after-rexxmast arexx-stage-after-waitforport arexx-stage-before-rx arexx-stage-rx-launched arexx-stage-after-rx-wait; do
+    if [ -f "$EVIDENCE/$f" ]; then
+        echo "--- $f ---" >&2
+        sed -n '1,160p' "$EVIDENCE/$f" >&2 || true
+    fi
+done
 exit 1
