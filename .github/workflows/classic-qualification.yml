@@ -47,10 +47,18 @@ jobs:
         if: ${{ inputs.payload_artifact_url != '' }}
         env:
           PAYLOAD_ARTIFACT_URL: ${{ inputs.payload_artifact_url }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           rm -rf "$RUNNER_TEMP/amiga-classic-payload"
           mkdir -p "$RUNNER_TEMP/amiga-classic-payload"
-          curl --fail --location --silent --show-error "$PAYLOAD_ARTIFACT_URL" -o "$RUNNER_TEMP/amiga-classic-payload.zip"
+          case "$PAYLOAD_ARTIFACT_URL" in
+            https://github.com/Ploos-AS/*/actions/runs/*/artifacts/*|https://api.github.com/repos/Ploos-AS/*/actions/artifacts/*/zip) ;;
+            *) echo "payload_artifact_url must be a Ploos-AS GitHub Actions artifact URL" >&2; exit 2 ;;
+          esac
+          curl --fail --location --silent --show-error \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "$PAYLOAD_ARTIFACT_URL" -o "$RUNNER_TEMP/amiga-classic-payload.zip"
           unzip -q "$RUNNER_TEMP/amiga-classic-payload.zip" -d "$RUNNER_TEMP/amiga-classic-payload"
           test -f "$RUNNER_TEMP/amiga-classic-payload/build/m3_3_runtime/amiga-runtime.json"
           echo "CLASSIC_PAYLOAD_PATH=$RUNNER_TEMP/amiga-classic-payload/build/m3_3_runtime" >> "$GITHUB_ENV"
