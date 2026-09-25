@@ -40,7 +40,7 @@ EOF
 # A valid contract must reach the classic backend. Missing private assets is
 # expected here and proves validation/routing completed without proprietary data.
 set +e
-PATH="$tmp/bin:$PATH" bin/qualify-contract "$tmp/good" >/tmp/contract-good.out 2>/tmp/contract-good.err
+PATH="$tmp/bin:$PATH" sh bin/qualify-contract "$tmp/good" >/tmp/contract-good.out 2>/tmp/contract-good.err
 rc=$?
 set -e
 test "$rc" -eq 69 || { cat /tmp/contract-good.out >&2; cat /tmp/contract-good.err >&2; exit 1; }
