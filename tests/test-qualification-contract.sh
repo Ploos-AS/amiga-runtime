@@ -43,8 +43,8 @@ set +e
 PATH="$tmp/bin:$PATH" bin/qualify-contract "$tmp/good" >/tmp/contract-good.out 2>/tmp/contract-good.err
 rc=$?
 set -e
-test "$rc" -eq 69
-grep -q 'SYNTHETIC_BACKEND_REACHED' /tmp/contract-good.out
+test "$rc" -eq 69 || { cat /tmp/contract-good.out >&2; cat /tmp/contract-good.err >&2; exit 1; }
+grep -q 'SYNTHETIC_BACKEND_REACHED' /tmp/contract-good.out || { cat /tmp/contract-good.out >&2; cat /tmp/contract-good.err >&2; exit 1; }
 
 cp -R "$tmp/good" "$tmp/traversal"
 python3 - "$tmp/traversal/amiga-runtime.json" <<'PY'
