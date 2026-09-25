@@ -51,3 +51,12 @@ See [ROADMAP.md](ROADMAP.md) and [docs/M0_ARCHITECTURE.md](docs/M0_ARCHITECTURE.
 ## Emulator backends
 
 The runtime uses an emulator-neutral backend contract. FS-UAE is the reference implementation; Amiberry, FellowNG, and Copperline are first-class targets. Copperline uses its bundled redistributable AROS boot ROM for deterministic headless guest-frame qualification. See [docs/EMULATOR_BACKEND_CONTRACT.md](docs/EMULATOR_BACKEND_CONTRACT.md).
+
+
+## Classic AmigaOS project contracts
+
+Q4 project qualification is deliberately separated from the redistributable CI path. The workflow `Classic AmigaOS qualification` runs only on a self-hosted runner labelled `amiga-classic`; legal Kickstart and AmigaOS system files stay outside the repository and are mounted read-only.
+
+A project supplies an `amiga-runtime.json` contract and staged payload. The workflow accepts either a local `payload_path` or a Ploos-AS GitHub Actions `payload_artifact_url`. Cross-repository artifact downloads may use the optional `CLASSIC_PAYLOAD_TOKEN` secret; if configured, scope it to Actions/content read access only.
+
+The workflow publishes only sanitized evidence and rejects common proprietary Amiga media/archive types and private host paths before upload. A successful build or emulator launch is not Q4 proof: the project contract's required guest markers must be present in the verified result.
