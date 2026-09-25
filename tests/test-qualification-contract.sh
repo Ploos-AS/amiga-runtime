@@ -57,8 +57,7 @@ PATH="$tmp/bin:$PATH" bin/qualify-contract "$tmp/traversal" >/tmp/contract-bad.o
 rc=$?
 set -e
 printf "traversal rc=%s\n" "$rc" >&2
-test "$rc" -ne 0
-grep -q 'unsafe contract path' /tmp/contract-bad.err
+grep -q 'unsafe contract path' /tmp/contract-bad.err || { cat /tmp/contract-bad.out >&2; cat /tmp/contract-bad.err >&2; exit 1; }
 
 cp -R "$tmp/good" "$tmp/no-lines"
 python3 - "$tmp/no-lines/amiga-runtime.json" <<'PY'
