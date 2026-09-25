@@ -1,0 +1,77 @@
+#!/bin/sh
+set -eu
+payload=\${1:?usage: qualify-classic-contract PAYLOAD_DIR PROFILE}
+profile=\${2:?usage: qualify-classic-contract PAYLOAD_DIR PROFILE}
+PROFILES=\${AMIGA_RUNTIME_PROFILES:-/opt/amiga-runtime/profiles}
+EVIDENCE=\${AMIGA_RUNTIME_EVIDENCE:-/work/evidence}
+TIMEOUT=\${AMIGA_RUNTIME_TIMEOUT:-120}
+FS_UAE=\${FS_UAE:-fs-uae}
+ROM=\${AMIGA_RUNTIME_KICKSTART_ROM:?set AMIGA_RUNTIME_KICKSTART_ROM to a legal Kickstart ROM}
+SYSTEM=\${AMIGA_RUNTIME_SYSTEM_DIR:?set AMIGA_RUNTIME_SYSTEM_DIR to a legal bootable AmigaOS directory}
+
+contract="$payload/amiga-runtime.json"
+test -s "$contract"
+test -f "$PROFILES/$profile.conf" || { echo "unknown profile: $profile" >&2; exit 66; }
+test -f "$ROM" || { echo "Kickstart ROM not found" >&2; exit 66; }
+test -d "$SYSTEM" || { echo "AmigaOS system directory not found" >&2; exit 66; }
+command -v "$FS_UAE" >/dev/null 2>&1
+
+mkdir -p "$EVIDENCE"
+rm -rf "$EVIDENCE/Test"
+mkdir -p "$EVIDENCE/Test"
+cp -R "$payload"/. "$EVIDENCE/Test/"
+
+python3 - "$contract" "$EVIDENCE/Test" <<'PY'
+import json,pathlib,sys
+c=json.load(open(sys.argv[1])); root=pathlib.Path(sys.argv[2])
+for key in ("library","program","script"):
+    p=root/c["payload"][key]
+    if not p.is_file(): raise SystemExit(f"missing payload: {p}")
+PY
+
+machine=$(sed -n 's/^machine=//p' "$PROFILES/$profile.conf")
+cpu=$(sed -n 's/^cpu=//p' "$PROFILES/$profile.conf")
+case "$machine" in a500) model=A500 ;; a500plus) model=A500+ ;; a1200) model=A1200 ;; *) echo "unsupported machine" >&2; exit 65 ;; esac
+
+config="$EVIDENCE/classic.fs-uae"
+cat >"$config" <<EOF
+[fs-uae]
+amiga_model = $model
+kickstart_file = $ROM
+cpu = $cpu
+hard_drive_0 = $SYSTEM
+hard_drive_0_label = DH0
+hard_drive_1 = $EVIDENCE/Test
+hard_drive_1_label = TEST
+accuracy = -1
+uae_cpu_speed = max
+fullscreen = 0
+EOF
+
+cat >"$EVIDENCE/RUN-ME.txt" <<'EOF'
+Classic AmigaOS qualification payload is mounted as TEST:.
+Execute:
+  Execute TEST:S/run-test
+The guest writes TEST:T/amtls-m3.3.log.
+EOF
+
+XDG_RUNTIME_DIR=\${XDG_RUNTIME_DIR:-/tmp/amiga-runtime-xdg}
+mkdir -p "$XDG_RUNTIME_DIR"; chmod 0700 "$XDG_RUNTIME_DIR"; export XDG_RUNTIME_DIR
+export LIBGL_ALWAYS_SOFTWARE=1
+set +e
+timeout "$TIMEOUT" xvfb-run -a -s '-screen 0 1024x768x24 +extension GLX' "$FS_UAE" "$config" >"$EVIDENCE/fs-uae.stdout.log" 2>"$EVIDENCE/fs-uae.stderr.log"
+emu_rc=$?
+set -e
+
+log="$EVIDENCE/Test/T/amtls-m3.3.log"
+status=FAIL
+if test -s "$log" && grep -q '^RC=0' "$log" && grep -q '^AMTLS_M3_3_PASS' "$log"; then status=PASS; fi
+python3 - "$EVIDENCE/result.json" "$profile" "$emu_rc" "$status" <<'PY'
+import json,pathlib,sys
+out,profile,rc,status=sys.argv[1:]
+pathlib.Path(out).write_text(json.dumps({
+ "schema":"amiga-runtime-result-v1","qualification_level":"classic-contract",
+ "runtime":"amigaos","emulator":"fs-uae","profile":profile,
+ "emulator_exit_code":int(rc),"status":status},indent=2)+"\n")
+PY
+test "$status" = PASS
