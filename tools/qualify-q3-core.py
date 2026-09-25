@@ -7,6 +7,7 @@ root = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else ".")
 checks = {
     "fs-uae": root / "runtime-evidence" / "result.json",
     "amiberry": root / "amiberry-runtime-evidence" / "result.json",
+    "fellowng": root / "fellowng-runtime-evidence" / "result.json",
 }
 results = {}
 for backend, path in checks.items():
