@@ -7,6 +7,10 @@ on:
         description: Path to staged project qualification payload on the self-hosted runner
         required: true
         default: /opt/amiga-qualification/payload
+      payload_artifact_url:
+        description: Optional GitHub artifact ZIP URL; when set, download and extract the staged payload on the runner
+        required: false
+        default: ""
       profile:
         description: Qualification contract profile
         required: true
@@ -39,11 +43,23 @@ jobs:
       - name: Build amiga-runtime
         run: docker build -t amiga-runtime:classic .
 
+      - name: Prepare optional artifact payload
+        if: ${{ inputs.payload_artifact_url != '' }}
+        env:
+          PAYLOAD_ARTIFACT_URL: ${{ inputs.payload_artifact_url }}
+        run: |
+          rm -rf "$RUNNER_TEMP/amiga-classic-payload"
+          mkdir -p "$RUNNER_TEMP/amiga-classic-payload"
+          curl --fail --location --silent --show-error "$PAYLOAD_ARTIFACT_URL" -o "$RUNNER_TEMP/amiga-classic-payload.zip"
+          unzip -q "$RUNNER_TEMP/amiga-classic-payload.zip" -d "$RUNNER_TEMP/amiga-classic-payload"
+          test -f "$RUNNER_TEMP/amiga-classic-payload/build/m3_3_runtime/amiga-runtime.json"
+          echo "CLASSIC_PAYLOAD_PATH=$RUNNER_TEMP/amiga-classic-payload/build/m3_3_runtime" >> "$GITHUB_ENV"
+
       - name: Run project contract
         env:
           AMIGA_RUNTIME_KICKSTART_ROM: ${{ secrets.AMIGA_RUNTIME_KICKSTART_ROM }}
           AMIGA_RUNTIME_SYSTEM_DIR: ${{ secrets.AMIGA_RUNTIME_SYSTEM_DIR }}
-          PAYLOAD_PATH: ${{ inputs.payload_path }}
+          PAYLOAD_PATH: ${{ env.CLASSIC_PAYLOAD_PATH || inputs.payload_path }}
           PROFILE: ${{ inputs.profile }}
         run: |
           test -d "$PAYLOAD_PATH"
