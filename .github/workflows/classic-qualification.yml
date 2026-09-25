@@ -1,0 +1,68 @@
+name: Classic AmigaOS qualification
+
+on:
+  workflow_dispatch:
+    inputs:
+      payload_path:
+        description: Path to staged project qualification payload on the self-hosted runner
+        required: true
+        default: /opt/amiga-qualification/payload
+      profile:
+        description: Qualification contract profile
+        required: true
+        default: a500-os204
+        type: choice
+        options:
+          - a500-os204
+          - a500plus-os2
+          - a1200-020-os3
+
+jobs:
+  classic:
+    # This label intentionally prevents proprietary assets from being requested
+    # by GitHub-hosted runners. The runner administrator supplies legal media.
+    runs-on: [self-hosted, amiga-classic]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate private runtime assets
+        env:
+          AMIGA_RUNTIME_KICKSTART_ROM: \${{ secrets.AMIGA_RUNTIME_KICKSTART_ROM }}
+          AMIGA_RUNTIME_SYSTEM_DIR: \${{ secrets.AMIGA_RUNTIME_SYSTEM_DIR }}
+        run: |
+          test -n "$AMIGA_RUNTIME_KICKSTART_ROM"
+          test -n "$AMIGA_RUNTIME_SYSTEM_DIR"
+          test -f "$AMIGA_RUNTIME_KICKSTART_ROM"
+          test -d "$AMIGA_RUNTIME_SYSTEM_DIR"
+
+      - name: Build amiga-runtime
+        run: docker build -t amiga-runtime:classic .
+
+      - name: Run project contract
+        env:
+          AMIGA_RUNTIME_KICKSTART_ROM: \${{ secrets.AMIGA_RUNTIME_KICKSTART_ROM }}
+          AMIGA_RUNTIME_SYSTEM_DIR: \${{ secrets.AMIGA_RUNTIME_SYSTEM_DIR }}
+          PAYLOAD_PATH: \${{ inputs.payload_path }}
+          PROFILE: \${{ inputs.profile }}
+        run: |
+          test -d "$PAYLOAD_PATH"
+          mkdir -p "$PWD/classic-evidence"
+          docker run --rm \
+            -e AMIGA_RUNTIME_KICKSTART_ROM=/private/kickstart.rom \
+            -e AMIGA_RUNTIME_SYSTEM_DIR=/private/system \
+            -v "$AMIGA_RUNTIME_KICKSTART_ROM:/private/kickstart.rom:ro" \
+            -v "$AMIGA_RUNTIME_SYSTEM_DIR:/private/system:ro" \
+            -v "$PAYLOAD_PATH:/work/payload:ro" \
+            -v "$PWD/classic-evidence:/work/evidence" \
+            amiga-runtime:classic qualify-contract /work/payload --profile "$PROFILE"
+
+      - name: Verify evidence
+        run: jq -e '.runtime == "amigaos" and .emulator == "fs-uae" and .status == "PASS"' classic-evidence/result.json
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: classic-amigaos-\${{ inputs.profile }}-evidence
+          path: classic-evidence/
