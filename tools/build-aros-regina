@@ -27,7 +27,11 @@ from pathlib import Path
 import re, sys
 p = Path(sys.argv[1])
 s = p.read_text()
-s, n = re.subn(r'^#define\s+DEBUG\s+0\s*
+s, n = re.subn(r'^#define\s+DEBUG\s+0\s*$', '#define DEBUG 1', s, count=1, flags=re.M)
+if n != 1: raise SystemExit("could not patch RexxMast DEBUG definition")
+p.write_text(s)
+PYDEBUG
+grep -Eq '^#define[[:space:]]+DEBUG[[:space:]]+1[[:space:]]*$' "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c"
 
 # DEBUG uses bug(), which goes to the emulator debug channel rather than the
 # redirected DOS output. Add guest-visible marker files so qualification can
