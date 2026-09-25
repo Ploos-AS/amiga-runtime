@@ -1,0 +1,43 @@
+#!/bin/sh
+set -eu
+payload=\${1:?usage: qualify-contract PAYLOAD_DIR [--profile PROFILE]}
+shift
+profile=""
+while [ "$#" -gt 0 ]; do
+ case "$1" in
+  --profile) profile=\${2:?missing profile}; shift 2 ;;
+  *) echo "unknown argument: $1" >&2; exit 64 ;;
+ esac
+done
+contract="$payload/amiga-runtime.json"
+test -s "$contract" || { echo "missing contract: $contract" >&2; exit 66; }
+python3 - "$contract" "$payload" <<'PY'
+import json,pathlib,sys
+c=json.loads(pathlib.Path(sys.argv[1]).read_text()); root=pathlib.Path(sys.argv[2])
+assert c.get("schema")==1
+assert c.get("architecture")=="m68k"
+for key in ("library","program","script"):
+    p=root/c["payload"][key]
+    if not p.is_file(): raise SystemExit(f"missing payload file: {p}")
+if c.get("policy",{}).get("roms_in_repository") is not False: raise SystemExit("contract must prohibit repository ROMs")
+if c.get("policy",{}).get("amigaos_files_in_repository") is not False: raise SystemExit("contract must prohibit repository AmigaOS files")
+print("contract:",c["project"],c["milestone"])
+PY
+if [ -z "$profile" ]; then
+ profile=$(python3 - "$contract" <<'PY'
+import json,sys
+c=json.load(open(sys.argv[1])); print(c.get("emulator_profiles",["amiga-ocs-68000-1m"])[0])
+PY
+)
+fi
+program=$(python3 - "$contract" "$payload" <<'PY'
+import json,pathlib,sys
+c=json.load(open(sys.argv[1])); print(pathlib.Path(sys.argv[2])/c["payload"]["program"])
+PY
+)
+case "$profile" in
+ a500-os204|a500plus-os2|a1200-020-os3)
+  echo "profile $profile requires classic AmigaOS assets; classic contract runner not configured yet" >&2
+  exit 69 ;;
+ *) exec backend-fs-uae run-hunk "$program" "$profile" ;;
+esac
