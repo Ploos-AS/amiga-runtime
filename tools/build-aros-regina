@@ -61,7 +61,6 @@ p.write_text(s)
 PY
 grep -q 'amiga-runtime-rexxmast-main-enter' "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c"
 grep -q 'amiga-runtime-rexxmaster-created' "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c"
-grep -q 'amiga-runtime-rexxmaster-enter' "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c"
 grep -q 'amiga-runtime-rexx-port-ready' "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c"
 
 mkdir -p "$WORK/toolchain" "$WORK/toolchain-build"
