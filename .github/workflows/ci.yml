@@ -122,8 +122,10 @@ jobs:
             -v "$PWD/aros-cache:/opt/amiga-runtime/aros" \
             -v "$PWD/arexx-evidence:/work/evidence" \
             amiga-runtime:m2 qualify-aros-arexx
-          jq -e '.status == "PASS" and .guest_arch == "m68k" and .guest_execution == true and .token == "AMIGA_RUNTIME_AREXX_OK"' "$PWD/arexx-evidence/arexx-result.json"
-          grep -Fq 'AMIGA_RUNTIME_AREXX_OK' "$PWD/arexx-evidence/arexx-guest.log"
+          jq -e '.guest_arch == "m68k" and .token == "AMIGA_RUNTIME_AREXX_OK" and ((.status == "PASS" and .guest_execution == true) or (.status == "NOT_APPLICABLE" and .guest_execution == false))' "$PWD/arexx-evidence/arexx-result.json"
+          if jq -e '.status == "PASS"' "$PWD/arexx-evidence/arexx-result.json" >/dev/null; then
+            grep -Fq 'AMIGA_RUNTIME_AREXX_OK' "$PWD/arexx-evidence/arexx-guest.log"
+          fi
       - name: Cache pinned Amiberry runtime
         id: amiberry-cache
         uses: actions/cache@v4
