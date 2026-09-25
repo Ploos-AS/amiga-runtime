@@ -43,6 +43,7 @@ set +e
 PATH="$tmp/bin:$PATH" sh bin/qualify-contract "$tmp/good" >/tmp/contract-good.out 2>/tmp/contract-good.err
 rc=$?
 set -e
+printf "good rc=%s\n" "$rc" >&2
 test "$rc" -eq 69 || { cat /tmp/contract-good.out >&2; cat /tmp/contract-good.err >&2; exit 1; }
 grep -q 'SYNTHETIC_BACKEND_REACHED' /tmp/contract-good.out || { cat /tmp/contract-good.out >&2; cat /tmp/contract-good.err >&2; exit 1; }
 
@@ -55,6 +56,7 @@ set +e
 PATH="$tmp/bin:$PATH" bin/qualify-contract "$tmp/traversal" >/tmp/contract-bad.out 2>/tmp/contract-bad.err
 rc=$?
 set -e
+printf "traversal rc=%s\n" "$rc" >&2
 test "$rc" -ne 0
 grep -q 'unsafe contract path' /tmp/contract-bad.err
 
@@ -67,6 +69,7 @@ set +e
 PATH="$tmp/bin:$PATH" bin/qualify-contract "$tmp/no-lines" >/tmp/contract-lines.out 2>/tmp/contract-lines.err
 rc=$?
 set -e
+printf "no-lines rc=%s\n" "$rc" >&2
 test "$rc" -ne 0
 grep -q 'required_lines' /tmp/contract-lines.err
 
