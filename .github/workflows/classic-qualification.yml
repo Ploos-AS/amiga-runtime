@@ -49,6 +49,7 @@ jobs:
           test -d "$PAYLOAD_PATH"
           mkdir -p "$PWD/classic-evidence"
           docker run --rm \
+            --network host \
             -e AMIGA_RUNTIME_KICKSTART_ROM=/private/kickstart.rom \
             -e AMIGA_RUNTIME_SYSTEM_DIR=/private/system \
             -v "$AMIGA_RUNTIME_KICKSTART_ROM:/private/kickstart.rom:ro" \
