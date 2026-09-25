@@ -23,7 +23,7 @@ git -C "$WORK/AROS/contrib" checkout --detach "$CONTRIB_REV"
 # diagnostics around server startup, message dispatch and RexxStart().
 # Keep this as a build-time patch; upstream source remains pinned and unmodified.
 sed -i -E 's/^#define[[:space:]]+DEBUG[[:space:]]+0[[:space:]]*$/#define DEBUG 1/' "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c"
-grep -Eq '^#define[[:space:]]+DEBUG[[:space:]]+1[[:space:]]*
+grep -Eq '^#define[[:space:]]+DEBUG[[:space:]]+1[[:space:]]*$' "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c"
 
 # DEBUG uses bug(), which goes to the emulator debug channel rather than the
 # redirected DOS output. Add guest-visible marker files so qualification can
