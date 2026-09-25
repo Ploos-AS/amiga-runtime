@@ -47,10 +47,14 @@ jobs:
         if: ${{ inputs.payload_artifact_url != '' }}
         env:
           PAYLOAD_ARTIFACT_URL: ${{ inputs.payload_artifact_url }}
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.CLASSIC_PAYLOAD_TOKEN || github.token }}
         run: |
           rm -rf "$RUNNER_TEMP/amiga-classic-payload"
           mkdir -p "$RUNNER_TEMP/amiga-classic-payload"
+          # Cross-repository Actions artifacts may require a token with Actions
+          # read access to the source repository. CLASSIC_PAYLOAD_TOKEN is
+          # optional for public/same-repository artifacts and must be scoped
+          # read-only when configured.
           case "$PAYLOAD_ARTIFACT_URL" in
             https://github.com/Ploos-AS/*/actions/runs/*/artifacts/*|https://api.github.com/repos/Ploos-AS/*/actions/artifacts/*/zip) ;;
             *) echo "payload_artifact_url must be a Ploos-AS GitHub Actions artifact URL" >&2; exit 2 ;;
