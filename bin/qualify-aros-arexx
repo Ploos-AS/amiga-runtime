@@ -109,12 +109,12 @@ Echo AMIGA_RUNTIME_BEFORE_REXXMAST >Evidence:arexx-stage-before-rexxmast
 Run >Evidence:rexxmast-launch.log System:Rexxc/RexxMast
 Echo AMIGA_RUNTIME_AFTER_REXXMAST >Evidence:arexx-stage-after-rexxmast
 C:WaitForPort REXX >Evidence:arexx-waitforport.log
-Echo AMIGA_RUNTIME_AFTER_WAITFORPORT >Evidence:arexx-stage-after-waitforport
 If WARN
   Echo AMIGA_RUNTIME_WAITFORPORT_WARN >Evidence:arexx-waitforport-warn
 Else
   Echo AMIGA_RUNTIME_WAITFORPORT_OK >Evidence:arexx-waitforport-ok
 EndIf
+Echo AMIGA_RUNTIME_AFTER_WAITFORPORT >Evidence:arexx-stage-after-waitforport
 C:Copy RAM:amiga-runtime-rexxmast-main-enter Evidence:rexxmast-main-enter QUIET
 C:Copy RAM:amiga-runtime-rexxmaster-created Evidence:rexxmaster-created QUIET
 C:Copy RAM:amiga-runtime-rexxmaster-create-failed Evidence:rexxmaster-create-failed QUIET
