@@ -121,6 +121,7 @@ C:Copy RAM:amiga-runtime-rexxmaster-create-failed Evidence:rexxmaster-create-fai
 C:Copy RAM:amiga-runtime-rexxmaster-enter Evidence:rexxmaster-enter QUIET
 C:Copy RAM:amiga-runtime-rexx-port-ready Evidence:rexx-port-ready-internal QUIET
 C:Copy RAM:amiga-runtime-rexx-port-failed Evidence:rexx-port-failed-internal QUIET
+Echo AMIGA_RUNTIME_AFTER_INTERNAL_COPY >Evidence:arexx-stage-after-internal-copy
 If EXISTS RAM:amiga-runtime-rexx-port-ready
   Echo AMIGA_RUNTIME_REXX_PORT_READY >Evidence:arexx-port-ready
 Else
