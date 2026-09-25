@@ -38,6 +38,8 @@ s = s.replace(
     'int main(int argc, char **argv)\n{\n'
     '   BPTR amiga_runtime_main_marker = Open("RAM:amiga-runtime-rexxmast-main-enter", MODE_NEWFILE);\n'
     '   if (amiga_runtime_main_marker) Close(amiga_runtime_main_marker);\n'
+    '   BPTR amiga_runtime_main_log = Open("RAM:amiga-runtime-rexxmast-argv", MODE_NEWFILE);\n'
+    '   if (amiga_runtime_main_log) { FPrintf(amiga_runtime_main_log, "argc=%ld\\n", (LONG)argc); Close(amiga_runtime_main_log); }\n'
 )
 s = s.replace(
     '   if (!server) {\n',
