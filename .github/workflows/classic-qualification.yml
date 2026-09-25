@@ -81,8 +81,21 @@ jobs:
           done
           test ! -e publish-evidence/System
           test ! -e publish-evidence/Test
+          # Reject proprietary media/archive types and known AmigaOS payload names.
+          if find publish-evidence -type f \( \
+              -iname '*.rom' -o -iname '*.adf' -o -iname '*.hdf' -o \
+              -iname '*.lha' -o -iname '*.iso' -o -iname 'workbench*' -o \
+              -iname 'startup-sequence.amiga-runtime-original' \
+            \) -print -quit | grep -q .; then
+            echo "proprietary-media candidate found in publishable evidence" >&2
+            exit 1
+          fi
           if grep -R -F "$AMIGA_RUNTIME_SYSTEM_DIR" publish-evidence 2>/dev/null; then
             echo "private AmigaOS system path leaked into publishable evidence" >&2
+            exit 1
+          fi
+          if grep -R -F "$AMIGA_RUNTIME_KICKSTART_ROM" publish-evidence 2>/dev/null; then
+            echo "private Kickstart path leaked into publishable evidence" >&2
             exit 1
           fi
 
