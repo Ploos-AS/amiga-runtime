@@ -16,6 +16,8 @@ check:
 	sh -n backends/fs-uae/run-aros
 	sh -n backends/fs-uae/run-hunk
 	sh -n backends/fs-uae/qualify-classic-contract
+	sh -n tests/test-qualification-contract.sh
+	sh tests/test-qualification-contract.sh
 	python3 -m py_compile lib/write-result.py lib/generate-fs-uae-config.py
 	test -f profiles/a500.conf
 	test -f profiles/a500plus.conf
