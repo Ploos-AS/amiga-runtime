@@ -60,9 +60,36 @@ jobs:
       - name: Verify evidence
         run: jq -e '.runtime == "amigaos" and .emulator == "fs-uae" and .status == "PASS"' classic-evidence/result.json
 
-      - name: Upload evidence
+      - name: Sanitize publishable evidence
+        if: always()
+        run: |
+          rm -rf publish-evidence
+          mkdir -p publish-evidence
+          for f in result.json verification.json fs-uae.stdout.log fs-uae.stderr.log RUN-ME.txt classic.fs-uae; do
+            if test -f "classic-evidence/$f"; then
+              case "$f" in
+                classic.fs-uae)
+                  # Config contains private host/container paths; publish a redacted copy.
+                  sed -e 's#^kickstart_file = .*#kickstart_file = [REDACTED]#' \
+                      -e 's#^hard_drive_0 = .*#hard_drive_0 = [REDACTED]#' \
+                      -e 's#^hard_drive_1 = .*#hard_drive_1 = [PAYLOAD]#' \
+                      "classic-evidence/$f" > "publish-evidence/$f"
+                  ;;
+                *) cp "classic-evidence/$f" "publish-evidence/$f" ;;
+              esac
+            fi
+          done
+          test ! -e publish-evidence/System
+          test ! -e publish-evidence/Test
+          if grep -R -F "$AMIGA_RUNTIME_SYSTEM_DIR" publish-evidence 2>/dev/null; then
+            echo "private AmigaOS system path leaked into publishable evidence" >&2
+            exit 1
+          fi
+
+      - name: Upload sanitized evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: classic-amigaos-\${{ inputs.profile }}-evidence
-          path: classic-evidence/
+          path: publish-evidence/
+          if-no-files-found: error
