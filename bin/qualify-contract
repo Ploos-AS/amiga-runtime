@@ -36,8 +36,8 @@ c=json.load(open(sys.argv[1])); print(pathlib.Path(sys.argv[2])/c["payload"]["pr
 PY
 )
 case "$profile" in
- a500-os204|a500plus-os2|a1200-020-os3)
-  echo "profile $profile requires classic AmigaOS assets; classic contract runner not configured yet" >&2
-  exit 69 ;;
+ a500-os204) exec backend-fs-uae qualify-classic-contract "$payload" a500 ;;
+ a500plus-os2) exec backend-fs-uae qualify-classic-contract "$payload" a500plus ;;
+ a1200-020-os3) exec backend-fs-uae qualify-classic-contract "$payload" a1200-020 ;;
  *) exec backend-fs-uae run-hunk "$program" "$profile" ;;
 esac
