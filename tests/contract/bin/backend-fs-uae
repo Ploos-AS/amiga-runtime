@@ -1,0 +1,3 @@
+#!/bin/sh
+echo SYNTHETIC_BACKEND_REACHED >&2
+exit 69
