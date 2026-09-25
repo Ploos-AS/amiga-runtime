@@ -28,8 +28,8 @@ jobs:
 
       - name: Validate private runtime assets
         env:
-          AMIGA_RUNTIME_KICKSTART_ROM: \${{ secrets.AMIGA_RUNTIME_KICKSTART_ROM }}
-          AMIGA_RUNTIME_SYSTEM_DIR: \${{ secrets.AMIGA_RUNTIME_SYSTEM_DIR }}
+          AMIGA_RUNTIME_KICKSTART_ROM: ${{ secrets.AMIGA_RUNTIME_KICKSTART_ROM }}
+          AMIGA_RUNTIME_SYSTEM_DIR: ${{ secrets.AMIGA_RUNTIME_SYSTEM_DIR }}
         run: |
           test -n "$AMIGA_RUNTIME_KICKSTART_ROM"
           test -n "$AMIGA_RUNTIME_SYSTEM_DIR"
@@ -41,10 +41,10 @@ jobs:
 
       - name: Run project contract
         env:
-          AMIGA_RUNTIME_KICKSTART_ROM: \${{ secrets.AMIGA_RUNTIME_KICKSTART_ROM }}
-          AMIGA_RUNTIME_SYSTEM_DIR: \${{ secrets.AMIGA_RUNTIME_SYSTEM_DIR }}
-          PAYLOAD_PATH: \${{ inputs.payload_path }}
-          PROFILE: \${{ inputs.profile }}
+          AMIGA_RUNTIME_KICKSTART_ROM: ${{ secrets.AMIGA_RUNTIME_KICKSTART_ROM }}
+          AMIGA_RUNTIME_SYSTEM_DIR: ${{ secrets.AMIGA_RUNTIME_SYSTEM_DIR }}
+          PAYLOAD_PATH: ${{ inputs.payload_path }}
+          PROFILE: ${{ inputs.profile }}
         run: |
           test -d "$PAYLOAD_PATH"
           mkdir -p "$PWD/classic-evidence"
@@ -62,6 +62,9 @@ jobs:
 
       - name: Sanitize publishable evidence
         if: always()
+        env:
+          AMIGA_RUNTIME_KICKSTART_ROM: ${{ secrets.AMIGA_RUNTIME_KICKSTART_ROM }}
+          AMIGA_RUNTIME_SYSTEM_DIR: ${{ secrets.AMIGA_RUNTIME_SYSTEM_DIR }}
         run: |
           rm -rf publish-evidence
           mkdir -p publish-evidence
@@ -99,10 +102,14 @@ jobs:
             exit 1
           fi
 
+      - name: Remove private runtime copies
+        if: always()
+        run: rm -rf classic-evidence/System classic-evidence/Test
+
       - name: Upload sanitized evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: classic-amigaos-\${{ inputs.profile }}-evidence
+          name: classic-amigaos-${{ inputs.profile }}-evidence
           path: publish-evidence/
           if-no-files-found: error
