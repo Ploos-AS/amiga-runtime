@@ -115,12 +115,21 @@ Else
   Echo AMIGA_RUNTIME_WAITFORPORT_OK >Evidence:arexx-waitforport-ok
 EndIf
 Echo AMIGA_RUNTIME_AFTER_WAITFORPORT >Evidence:arexx-stage-after-waitforport
-C:Copy RAM:amiga-runtime-rexxmast-main-enter Evidence:rexxmast-main-enter QUIET
-C:Copy RAM:amiga-runtime-rexxmaster-created Evidence:rexxmaster-created QUIET
-C:Copy RAM:amiga-runtime-rexxmaster-create-failed Evidence:rexxmaster-create-failed QUIET
-C:Copy RAM:amiga-runtime-rexxmaster-enter Evidence:rexxmaster-enter QUIET
-C:Copy RAM:amiga-runtime-rexx-port-ready Evidence:rexx-port-ready-internal QUIET
-C:Copy RAM:amiga-runtime-rexx-port-failed Evidence:rexx-port-failed-internal QUIET
+If EXISTS RAM:amiga-runtime-rexxmast-main-enter
+  C:Copy RAM:amiga-runtime-rexxmast-main-enter Evidence:rexxmast-main-enter QUIET
+EndIf
+If EXISTS RAM:amiga-runtime-rexxmaster-created
+  C:Copy RAM:amiga-runtime-rexxmaster-created Evidence:rexxmaster-created QUIET
+EndIf
+If EXISTS RAM:amiga-runtime-rexxmaster-create-failed
+  C:Copy RAM:amiga-runtime-rexxmaster-create-failed Evidence:rexxmaster-create-failed QUIET
+EndIf
+If EXISTS RAM:amiga-runtime-rexx-port-ready
+  C:Copy RAM:amiga-runtime-rexx-port-ready Evidence:rexx-port-ready-internal QUIET
+EndIf
+If EXISTS RAM:amiga-runtime-rexx-port-failed
+  C:Copy RAM:amiga-runtime-rexx-port-failed Evidence:rexx-port-failed-internal QUIET
+EndIf
 Echo AMIGA_RUNTIME_AFTER_INTERNAL_COPY >Evidence:arexx-stage-after-internal-copy
 If EXISTS RAM:amiga-runtime-rexx-port-ready
   Echo AMIGA_RUNTIME_REXX_PORT_READY >Evidence:arexx-port-ready
