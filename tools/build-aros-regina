@@ -22,8 +22,329 @@ git -C "$WORK/AROS/contrib" checkout --detach "$CONTRIB_REV"
 # Qualification instrumentation: DEBUG enables RexxMast's existing bug()
 # diagnostics around server startup, message dispatch and RexxStart().
 # Keep this as a build-time patch; upstream source remains pinned and unmodified.
-sed -i -E 's/^#define[[:space:]]+DEBUG[[:space:]]+0[[:space:]]*$/#define DEBUG 1/' "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c"
-grep -Eq '^#define[[:space:]]+DEBUG[[:space:]]+1[[:space:]]*$' "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c"
+python3 - "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c" <<'PYDEBUG'
+from pathlib import Path
+import re, sys
+p = Path(sys.argv[1])
+s = p.read_text()
+s, n = re.subn(r'^#define\s+DEBUG\s+0\s*
+
+# DEBUG uses bug(), which goes to the emulator debug channel rather than the
+# redirected DOS output. Add guest-visible marker files so qualification can
+# locate server startup failures without depending on serial/debug capture.
+python3 - "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c" <<'PY'
+from pathlib import Path
+import sys
+p = Path(sys.argv[1])
+s = p.read_text()
+s = s.replace(
+    'int main(int argc, char **argv)\n{\n',
+    'int main(int argc, char **argv)\n{\n'
+    '   BPTR amiga_runtime_main_marker = Open("RAM:amiga-runtime-rexxmast-main-enter", MODE_NEWFILE);\n'
+    '   if (amiga_runtime_main_marker) Close(amiga_runtime_main_marker);\n'
+    '   BPTR amiga_runtime_main_log = Open("RAM:amiga-runtime-rexxmast-argv", MODE_NEWFILE);\n'
+    '   if (amiga_runtime_main_log) { FPrintf(amiga_runtime_main_log, "argc=%ld\\n", (LONG)argc); Close(amiga_runtime_main_log); }\n'
+)
+s = s.replace(
+    '   if (!server) {\n',
+    '   amiga_runtime_main_marker = Open(server ? "RAM:amiga-runtime-rexxmaster-created" : "RAM:amiga-runtime-rexxmaster-create-failed", MODE_NEWFILE);\n'
+    '   if (amiga_runtime_main_marker) Close(amiga_runtime_main_marker);\n'
+    '   if (!server) {\n'
+)
+s = s.replace(
+    'void server_process(void)\n{\n',
+    'void server_process(void)\n{\n'
+    '   BPTR amiga_runtime_marker;\n'
+)
+s = s.replace(
+    '   port = CreatePort("REXX", 0);\n\n',
+    '   port = CreatePort("REXX", 0);\n'
+    '   amiga_runtime_marker = Open(port ? "RAM:amiga-runtime-rexx-port-ready" : "RAM:amiga-runtime-rexx-port-failed", MODE_NEWFILE);\n'
+    '   if (amiga_runtime_marker) Close(amiga_runtime_marker);\n'
+    '   if (!port) return;\n\n'
+)
+p.write_text(s)
+PY
+grep -q 'amiga-runtime-rexxmast-main-enter' "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c"
+grep -q 'amiga-runtime-rexxmaster-created' "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c"
+grep -q 'amiga-runtime-rexx-port-ready' "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c"
+
+mkdir -p "$WORK/toolchain" "$WORK/toolchain-build"
+cd "$WORK/toolchain-build"
+"$WORK/AROS/configure" --target=amiga-m68k --with-aros-toolchain-install="$WORK/toolchain"
+make -j"$JOBS" crosstools
+
+mkdir -p "$WORK/build"
+cd "$WORK/build"
+export PATH="$WORK/toolchain/bin:$PATH"
+"$WORK/AROS/configure" --target=amiga-m68k --with-aros-toolchain-install="$WORK/toolchain"
+make -j"$JOBS" kernel
+make -j"$JOBS" tools mmake
+# Build the libraries first: RexxMast links against both and parallel mmake does not
+# reliably order these independently requested targets.
+make -j"$JOBS" contrib-regina-module workbench-libs-rexxsyslib
+make -j"$JOBS" contrib-regina-rexxmast-arosc
+
+# Capture the produced executable format before publishing it.  This catches
+# loader/startup mismatches separately from guest-side ARexx failures.
+REXXMAST_BUILT=$(find "$WORK/build/bin/amiga-m68k/AROS" -type f -name 'RexxMast' -print -quit)
+test -n "$REXXMAST_BUILT"
+{
+  echo "rexxmast_path=$REXXMAST_BUILT"
+  file "$REXXMAST_BUILT" || true
+  "$WORK/toolchain/bin/m68k-aros-readelf" -h "$REXXMAST_BUILT" 2>/dev/null || true
+} > "$OUT/RexxMast-format.txt"
+
+find "$WORK/build/bin/amiga-m68k/AROS" -type f \( -name 'regina.library' -o -name 'RexxMast' \) -print -exec cp {} "$OUT/" \;
+
+test -s "$OUT/regina.library"
+test -s "$OUT/RexxMast"
+sha256sum "$OUT/regina.library" "$OUT/RexxMast" > "$OUT/SHA256SUMS"
+{
+  echo "aros_revision=$AROS_REV"
+  echo "contrib_revision=$CONTRIB_REV"
+  echo "target=amiga-m68k"
+} > "$OUT/provenance.env"
+ "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c"
+
+# DEBUG uses bug(), which goes to the emulator debug channel rather than the
+# redirected DOS output. Add guest-visible marker files so qualification can
+# locate server startup failures without depending on serial/debug capture.
+python3 - "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c" <<'PY'
+from pathlib import Path
+import sys
+p = Path(sys.argv[1])
+s = p.read_text()
+s = s.replace(
+    'int main(int argc, char **argv)\n{\n',
+    'int main(int argc, char **argv)\n{\n'
+    '   BPTR amiga_runtime_main_marker = Open("RAM:amiga-runtime-rexxmast-main-enter", MODE_NEWFILE);\n'
+    '   if (amiga_runtime_main_marker) Close(amiga_runtime_main_marker);\n'
+    '   BPTR amiga_runtime_main_log = Open("RAM:amiga-runtime-rexxmast-argv", MODE_NEWFILE);\n'
+    '   if (amiga_runtime_main_log) { FPrintf(amiga_runtime_main_log, "argc=%ld\\n", (LONG)argc); Close(amiga_runtime_main_log); }\n'
+)
+s = s.replace(
+    '   if (!server) {\n',
+    '   amiga_runtime_main_marker = Open(server ? "RAM:amiga-runtime-rexxmaster-created" : "RAM:amiga-runtime-rexxmaster-create-failed", MODE_NEWFILE);\n'
+    '   if (amiga_runtime_main_marker) Close(amiga_runtime_main_marker);\n'
+    '   if (!server) {\n'
+)
+s = s.replace(
+    'void server_process(void)\n{\n',
+    'void server_process(void)\n{\n'
+    '   BPTR amiga_runtime_marker;\n'
+)
+s = s.replace(
+    '   port = CreatePort("REXX", 0);\n\n',
+    '   port = CreatePort("REXX", 0);\n'
+    '   amiga_runtime_marker = Open(port ? "RAM:amiga-runtime-rexx-port-ready" : "RAM:amiga-runtime-rexx-port-failed", MODE_NEWFILE);\n'
+    '   if (amiga_runtime_marker) Close(amiga_runtime_marker);\n'
+    '   if (!port) return;\n\n'
+)
+p.write_text(s)
+PY
+grep -q 'amiga-runtime-rexxmast-main-enter' "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c"
+grep -q 'amiga-runtime-rexxmaster-created' "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c"
+grep -q 'amiga-runtime-rexx-port-ready' "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c"
+
+mkdir -p "$WORK/toolchain" "$WORK/toolchain-build"
+cd "$WORK/toolchain-build"
+"$WORK/AROS/configure" --target=amiga-m68k --with-aros-toolchain-install="$WORK/toolchain"
+make -j"$JOBS" crosstools
+
+mkdir -p "$WORK/build"
+cd "$WORK/build"
+export PATH="$WORK/toolchain/bin:$PATH"
+"$WORK/AROS/configure" --target=amiga-m68k --with-aros-toolchain-install="$WORK/toolchain"
+make -j"$JOBS" kernel
+make -j"$JOBS" tools mmake
+# Build the libraries first: RexxMast links against both and parallel mmake does not
+# reliably order these independently requested targets.
+make -j"$JOBS" contrib-regina-module workbench-libs-rexxsyslib
+make -j"$JOBS" contrib-regina-rexxmast-arosc
+
+# Capture the produced executable format before publishing it.  This catches
+# loader/startup mismatches separately from guest-side ARexx failures.
+REXXMAST_BUILT=$(find "$WORK/build/bin/amiga-m68k/AROS" -type f -name 'RexxMast' -print -quit)
+test -n "$REXXMAST_BUILT"
+{
+  echo "rexxmast_path=$REXXMAST_BUILT"
+  file "$REXXMAST_BUILT" || true
+  "$WORK/toolchain/bin/m68k-aros-readelf" -h "$REXXMAST_BUILT" 2>/dev/null || true
+} > "$OUT/RexxMast-format.txt"
+
+find "$WORK/build/bin/amiga-m68k/AROS" -type f \( -name 'regina.library' -o -name 'RexxMast' \) -print -exec cp {} "$OUT/" \;
+
+test -s "$OUT/regina.library"
+test -s "$OUT/RexxMast"
+sha256sum "$OUT/regina.library" "$OUT/RexxMast" > "$OUT/SHA256SUMS"
+{
+  echo "aros_revision=$AROS_REV"
+  echo "contrib_revision=$CONTRIB_REV"
+  echo "target=amiga-m68k"
+} > "$OUT/provenance.env"
+, '#define DEBUG 1', s, count=1, flags=re.M)
+if n != 1:
+    raise SystemExit('expected DEBUG 0 definition not found')
+p.write_text(s)
+PYDEBUG
+grep -q '^#define DEBUG 1
+
+# DEBUG uses bug(), which goes to the emulator debug channel rather than the
+# redirected DOS output. Add guest-visible marker files so qualification can
+# locate server startup failures without depending on serial/debug capture.
+python3 - "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c" <<'PY'
+from pathlib import Path
+import sys
+p = Path(sys.argv[1])
+s = p.read_text()
+s = s.replace(
+    'int main(int argc, char **argv)\n{\n',
+    'int main(int argc, char **argv)\n{\n'
+    '   BPTR amiga_runtime_main_marker = Open("RAM:amiga-runtime-rexxmast-main-enter", MODE_NEWFILE);\n'
+    '   if (amiga_runtime_main_marker) Close(amiga_runtime_main_marker);\n'
+    '   BPTR amiga_runtime_main_log = Open("RAM:amiga-runtime-rexxmast-argv", MODE_NEWFILE);\n'
+    '   if (amiga_runtime_main_log) { FPrintf(amiga_runtime_main_log, "argc=%ld\\n", (LONG)argc); Close(amiga_runtime_main_log); }\n'
+)
+s = s.replace(
+    '   if (!server) {\n',
+    '   amiga_runtime_main_marker = Open(server ? "RAM:amiga-runtime-rexxmaster-created" : "RAM:amiga-runtime-rexxmaster-create-failed", MODE_NEWFILE);\n'
+    '   if (amiga_runtime_main_marker) Close(amiga_runtime_main_marker);\n'
+    '   if (!server) {\n'
+)
+s = s.replace(
+    'void server_process(void)\n{\n',
+    'void server_process(void)\n{\n'
+    '   BPTR amiga_runtime_marker;\n'
+)
+s = s.replace(
+    '   port = CreatePort("REXX", 0);\n\n',
+    '   port = CreatePort("REXX", 0);\n'
+    '   amiga_runtime_marker = Open(port ? "RAM:amiga-runtime-rexx-port-ready" : "RAM:amiga-runtime-rexx-port-failed", MODE_NEWFILE);\n'
+    '   if (amiga_runtime_marker) Close(amiga_runtime_marker);\n'
+    '   if (!port) return;\n\n'
+)
+p.write_text(s)
+PY
+grep -q 'amiga-runtime-rexxmast-main-enter' "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c"
+grep -q 'amiga-runtime-rexxmaster-created' "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c"
+grep -q 'amiga-runtime-rexx-port-ready' "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c"
+
+mkdir -p "$WORK/toolchain" "$WORK/toolchain-build"
+cd "$WORK/toolchain-build"
+"$WORK/AROS/configure" --target=amiga-m68k --with-aros-toolchain-install="$WORK/toolchain"
+make -j"$JOBS" crosstools
+
+mkdir -p "$WORK/build"
+cd "$WORK/build"
+export PATH="$WORK/toolchain/bin:$PATH"
+"$WORK/AROS/configure" --target=amiga-m68k --with-aros-toolchain-install="$WORK/toolchain"
+make -j"$JOBS" kernel
+make -j"$JOBS" tools mmake
+# Build the libraries first: RexxMast links against both and parallel mmake does not
+# reliably order these independently requested targets.
+make -j"$JOBS" contrib-regina-module workbench-libs-rexxsyslib
+make -j"$JOBS" contrib-regina-rexxmast-arosc
+
+# Capture the produced executable format before publishing it.  This catches
+# loader/startup mismatches separately from guest-side ARexx failures.
+REXXMAST_BUILT=$(find "$WORK/build/bin/amiga-m68k/AROS" -type f -name 'RexxMast' -print -quit)
+test -n "$REXXMAST_BUILT"
+{
+  echo "rexxmast_path=$REXXMAST_BUILT"
+  file "$REXXMAST_BUILT" || true
+  "$WORK/toolchain/bin/m68k-aros-readelf" -h "$REXXMAST_BUILT" 2>/dev/null || true
+} > "$OUT/RexxMast-format.txt"
+
+find "$WORK/build/bin/amiga-m68k/AROS" -type f \( -name 'regina.library' -o -name 'RexxMast' \) -print -exec cp {} "$OUT/" \;
+
+test -s "$OUT/regina.library"
+test -s "$OUT/RexxMast"
+sha256sum "$OUT/regina.library" "$OUT/RexxMast" > "$OUT/SHA256SUMS"
+{
+  echo "aros_revision=$AROS_REV"
+  echo "contrib_revision=$CONTRIB_REV"
+  echo "target=amiga-m68k"
+} > "$OUT/provenance.env"
+ "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c"
+
+# DEBUG uses bug(), which goes to the emulator debug channel rather than the
+# redirected DOS output. Add guest-visible marker files so qualification can
+# locate server startup failures without depending on serial/debug capture.
+python3 - "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c" <<'PY'
+from pathlib import Path
+import sys
+p = Path(sys.argv[1])
+s = p.read_text()
+s = s.replace(
+    'int main(int argc, char **argv)\n{\n',
+    'int main(int argc, char **argv)\n{\n'
+    '   BPTR amiga_runtime_main_marker = Open("RAM:amiga-runtime-rexxmast-main-enter", MODE_NEWFILE);\n'
+    '   if (amiga_runtime_main_marker) Close(amiga_runtime_main_marker);\n'
+    '   BPTR amiga_runtime_main_log = Open("RAM:amiga-runtime-rexxmast-argv", MODE_NEWFILE);\n'
+    '   if (amiga_runtime_main_log) { FPrintf(amiga_runtime_main_log, "argc=%ld\\n", (LONG)argc); Close(amiga_runtime_main_log); }\n'
+)
+s = s.replace(
+    '   if (!server) {\n',
+    '   amiga_runtime_main_marker = Open(server ? "RAM:amiga-runtime-rexxmaster-created" : "RAM:amiga-runtime-rexxmaster-create-failed", MODE_NEWFILE);\n'
+    '   if (amiga_runtime_main_marker) Close(amiga_runtime_main_marker);\n'
+    '   if (!server) {\n'
+)
+s = s.replace(
+    'void server_process(void)\n{\n',
+    'void server_process(void)\n{\n'
+    '   BPTR amiga_runtime_marker;\n'
+)
+s = s.replace(
+    '   port = CreatePort("REXX", 0);\n\n',
+    '   port = CreatePort("REXX", 0);\n'
+    '   amiga_runtime_marker = Open(port ? "RAM:amiga-runtime-rexx-port-ready" : "RAM:amiga-runtime-rexx-port-failed", MODE_NEWFILE);\n'
+    '   if (amiga_runtime_marker) Close(amiga_runtime_marker);\n'
+    '   if (!port) return;\n\n'
+)
+p.write_text(s)
+PY
+grep -q 'amiga-runtime-rexxmast-main-enter' "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c"
+grep -q 'amiga-runtime-rexxmaster-created' "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c"
+grep -q 'amiga-runtime-rexx-port-ready' "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c"
+
+mkdir -p "$WORK/toolchain" "$WORK/toolchain-build"
+cd "$WORK/toolchain-build"
+"$WORK/AROS/configure" --target=amiga-m68k --with-aros-toolchain-install="$WORK/toolchain"
+make -j"$JOBS" crosstools
+
+mkdir -p "$WORK/build"
+cd "$WORK/build"
+export PATH="$WORK/toolchain/bin:$PATH"
+"$WORK/AROS/configure" --target=amiga-m68k --with-aros-toolchain-install="$WORK/toolchain"
+make -j"$JOBS" kernel
+make -j"$JOBS" tools mmake
+# Build the libraries first: RexxMast links against both and parallel mmake does not
+# reliably order these independently requested targets.
+make -j"$JOBS" contrib-regina-module workbench-libs-rexxsyslib
+make -j"$JOBS" contrib-regina-rexxmast-arosc
+
+# Capture the produced executable format before publishing it.  This catches
+# loader/startup mismatches separately from guest-side ARexx failures.
+REXXMAST_BUILT=$(find "$WORK/build/bin/amiga-m68k/AROS" -type f -name 'RexxMast' -print -quit)
+test -n "$REXXMAST_BUILT"
+{
+  echo "rexxmast_path=$REXXMAST_BUILT"
+  file "$REXXMAST_BUILT" || true
+  "$WORK/toolchain/bin/m68k-aros-readelf" -h "$REXXMAST_BUILT" 2>/dev/null || true
+} > "$OUT/RexxMast-format.txt"
+
+find "$WORK/build/bin/amiga-m68k/AROS" -type f \( -name 'regina.library' -o -name 'RexxMast' \) -print -exec cp {} "$OUT/" \;
+
+test -s "$OUT/regina.library"
+test -s "$OUT/RexxMast"
+sha256sum "$OUT/regina.library" "$OUT/RexxMast" > "$OUT/SHA256SUMS"
+{
+  echo "aros_revision=$AROS_REV"
+  echo "contrib_revision=$CONTRIB_REV"
+  echo "target=amiga-m68k"
+} > "$OUT/provenance.env"
+ "$WORK/AROS/contrib/regina/rexxmast/RexxMast.c"
 
 # DEBUG uses bug(), which goes to the emulator debug channel rather than the
 # redirected DOS output. Add guest-visible marker files so qualification can
