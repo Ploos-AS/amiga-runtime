@@ -1,13 +1,13 @@
 #!/bin/sh
 set -eu
-payload=\${1:?usage: qualify-classic-contract PAYLOAD_DIR PROFILE}
-profile=\${2:?usage: qualify-classic-contract PAYLOAD_DIR PROFILE}
-PROFILES=\${AMIGA_RUNTIME_PROFILES:-/opt/amiga-runtime/profiles}
-EVIDENCE=\${AMIGA_RUNTIME_EVIDENCE:-/work/evidence}
-TIMEOUT=\${AMIGA_RUNTIME_TIMEOUT:-120}
-FS_UAE=\${FS_UAE:-fs-uae}
-ROM=\${AMIGA_RUNTIME_KICKSTART_ROM:?set AMIGA_RUNTIME_KICKSTART_ROM to a legal Kickstart ROM}
-SYSTEM=\${AMIGA_RUNTIME_SYSTEM_DIR:?set AMIGA_RUNTIME_SYSTEM_DIR to a legal bootable AmigaOS directory}
+payload=${1:?usage: qualify-classic-contract PAYLOAD_DIR PROFILE}
+profile=${2:?usage: qualify-classic-contract PAYLOAD_DIR PROFILE}
+PROFILES=${AMIGA_RUNTIME_PROFILES:-/opt/amiga-runtime/profiles}
+EVIDENCE=${AMIGA_RUNTIME_EVIDENCE:-/work/evidence}
+TIMEOUT=${AMIGA_RUNTIME_TIMEOUT:-120}
+FS_UAE=${FS_UAE:-fs-uae}
+ROM=${AMIGA_RUNTIME_KICKSTART_ROM:?set AMIGA_RUNTIME_KICKSTART_ROM to a legal Kickstart ROM}
+SYSTEM=${AMIGA_RUNTIME_SYSTEM_DIR:?set AMIGA_RUNTIME_SYSTEM_DIR to a legal bootable AmigaOS directory}
 
 contract="$payload/amiga-runtime.json"
 test -s "$contract"
@@ -23,10 +23,29 @@ cp -R "$payload"/. "$EVIDENCE/Test/"
 
 python3 - "$contract" "$EVIDENCE/Test" <<'PY'
 import json,pathlib,sys
-c=json.load(open(sys.argv[1])); root=pathlib.Path(sys.argv[2])
+c=json.load(open(sys.argv[1])); root=pathlib.Path(sys.argv[2]).resolve()
+def safe(rel):
+    p=pathlib.Path(rel)
+    if p.is_absolute() or ".." in p.parts:
+        raise SystemExit(f"unsafe contract path: {rel}")
+    q=(root/p).resolve()
+    if root not in q.parents and q != root:
+        raise SystemExit(f"path escapes payload: {rel}")
+    return q
+payload=c.get("payload",{})
+paths=[]
 for key in ("library","program","script"):
-    p=root/c["payload"][key]
-    if not p.is_file(): raise SystemExit(f"missing payload: {p}")
+    if key in payload: paths.append(payload[key])
+paths += payload.get("programs",[])
+for rel in paths:
+    p=safe(rel)
+    if not p.is_file(): raise SystemExit(f"missing payload: {rel}")
+result=c.get("result",{})
+logs=result.get("logs",[])
+if "log" in result: logs.insert(0,result["log"])
+if not logs: raise SystemExit("contract has no result log")
+for rel in logs: safe(rel)
+if not result.get("required_lines"): raise SystemExit("contract has no required_lines")
 PY
 
 machine=$(sed -n 's/^machine=//p' "$PROFILES/$profile.conf")
@@ -50,12 +69,11 @@ EOF
 
 cat >"$EVIDENCE/RUN-ME.txt" <<'EOF'
 Classic AmigaOS qualification payload is mounted as TEST:.
-Execute:
-  Execute TEST:S/run-test
-The guest writes TEST:T/amtls-m3.3.log.
+Execute the script named by payload.script in amiga-runtime.json.
+Result logs and required markers are also defined by that contract.
 EOF
 
-XDG_RUNTIME_DIR=\${XDG_RUNTIME_DIR:-/tmp/amiga-runtime-xdg}
+XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/tmp/amiga-runtime-xdg}
 mkdir -p "$XDG_RUNTIME_DIR"; chmod 0700 "$XDG_RUNTIME_DIR"; export XDG_RUNTIME_DIR
 export LIBGL_ALWAYS_SOFTWARE=1
 set +e
@@ -63,9 +81,35 @@ timeout "$TIMEOUT" xvfb-run -a -s '-screen 0 1024x768x24 +extension GLX' "$FS_UA
 emu_rc=$?
 set -e
 
-log="$EVIDENCE/Test/T/amtls-m3.3.log"
-status=FAIL
-if test -s "$log" && grep -q '^RC=0' "$log" && grep -q '^AMTLS_M3_3_PASS' "$log"; then status=PASS; fi
+set +e
+python3 - "$contract" "$EVIDENCE/Test" "$EVIDENCE/verification.json" <<'PY'
+import json,pathlib,sys
+contract_path,root_arg,out=sys.argv[1:]
+c=json.load(open(contract_path)); root=pathlib.Path(root_arg).resolve()
+def safe(rel):
+    p=pathlib.Path(rel)
+    if p.is_absolute() or ".." in p.parts: raise SystemExit(2)
+    q=(root/p).resolve()
+    if root not in q.parents and q != root: raise SystemExit(2)
+    return q
+r=c["result"]; logs=list(r.get("logs",[]))
+if "log" in r and r["log"] not in logs: logs.insert(0,r["log"])
+lines=[]
+missing_logs=[]
+for rel in logs:
+    p=safe(rel)
+    if not p.is_file(): missing_logs.append(rel); continue
+    lines.extend(p.read_text(errors="replace").splitlines())
+required=r["required_lines"]
+missing=[x for x in required if x not in lines]
+status="PASS" if not missing_logs and not missing else "FAIL"
+pathlib.Path(out).write_text(json.dumps({"status":status,"logs":logs,"missing_logs":missing_logs,"required_lines":required,"missing_lines":missing},indent=2)+"\n")
+raise SystemExit(0 if status=="PASS" else 1)
+PY
+verify_rc=$?
+set -e
+if test "$verify_rc" -eq 0; then status=PASS; else status=FAIL; fi
+
 python3 - "$EVIDENCE/result.json" "$profile" "$emu_rc" "$status" <<'PY'
 import json,pathlib,sys
 out,profile,rc,status=sys.argv[1:]
