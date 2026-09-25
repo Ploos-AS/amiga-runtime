@@ -1,11 +1,11 @@
 #!/bin/sh
 set -eu
-payload=\${1:?usage: qualify-contract PAYLOAD_DIR [--profile PROFILE]}
+payload=${1:?usage: qualify-contract PAYLOAD_DIR [--profile PROFILE]}
 shift
 profile=""
 while [ "$#" -gt 0 ]; do
  case "$1" in
-  --profile) profile=\${2:?missing profile}; shift 2 ;;
+  --profile) profile=${2:?missing profile}; shift 2 ;;
   *) echo "unknown argument: $1" >&2; exit 64 ;;
  esac
 done
@@ -13,12 +13,29 @@ contract="$payload/amiga-runtime.json"
 test -s "$contract" || { echo "missing contract: $contract" >&2; exit 66; }
 python3 - "$contract" "$payload" <<'PY'
 import json,pathlib,sys
-c=json.loads(pathlib.Path(sys.argv[1]).read_text()); root=pathlib.Path(sys.argv[2])
-assert c.get("schema")==1
-assert c.get("architecture")=="m68k"
+c=json.loads(pathlib.Path(sys.argv[1]).read_text()); root=pathlib.Path(sys.argv[2]).resolve()
+if c.get("schema") != 1: raise SystemExit("unsupported contract schema")
+if c.get("architecture") != "m68k": raise SystemExit("contract architecture must be m68k")
+def safe(rel):
+    p=pathlib.Path(rel)
+    if p.is_absolute() or ".." in p.parts: raise SystemExit(f"unsafe contract path: {rel}")
+    q=(root/p).resolve()
+    if root not in q.parents and q != root: raise SystemExit(f"path escapes payload: {rel}")
+    return q
+p=c.get("payload",{})
+paths=[]
 for key in ("library","program","script"):
-    p=root/c["payload"][key]
-    if not p.is_file(): raise SystemExit(f"missing payload file: {p}")
+    if key in p: paths.append(p[key])
+paths += p.get("programs",[])
+if not paths: raise SystemExit("contract has no payload files")
+for rel in paths:
+    if not safe(rel).is_file(): raise SystemExit(f"missing payload file: {rel}")
+r=c.get("result",{})
+logs=list(r.get("logs",[]))
+if "log" in r: logs.append(r["log"])
+if not logs: raise SystemExit("contract has no result log")
+for rel in logs: safe(rel)
+if not r.get("required_lines"): raise SystemExit("contract has no required_lines")
 if c.get("policy",{}).get("roms_in_repository") is not False: raise SystemExit("contract must prohibit repository ROMs")
 if c.get("policy",{}).get("amigaos_files_in_repository") is not False: raise SystemExit("contract must prohibit repository AmigaOS files")
 print("contract:",c["project"],c["milestone"])
@@ -32,7 +49,13 @@ PY
 fi
 program=$(python3 - "$contract" "$payload" <<'PY'
 import json,pathlib,sys
-c=json.load(open(sys.argv[1])); print(pathlib.Path(sys.argv[2])/c["payload"]["program"])
+c=json.load(open(sys.argv[1])); p=c["payload"]
+program=p.get("program")
+if program is None:
+    programs=p.get("programs",[])
+    if not programs: raise SystemExit("contract has no program")
+    program=programs[0]
+print(pathlib.Path(sys.argv[2])/program)
 PY
 )
 case "$profile" in
