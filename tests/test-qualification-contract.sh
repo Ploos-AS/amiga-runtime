@@ -28,6 +28,10 @@ cat >"$tmp/good/amiga-runtime.json" <<'EOF'
   "policy": {
     "roms_in_repository": false,
     "amigaos_files_in_repository": false
+  },
+  "requirements": {
+    "network": true,
+    "bsdsocket_library": true
   }
 }
 EOF
