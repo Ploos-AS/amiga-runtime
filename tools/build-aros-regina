@@ -81,6 +81,16 @@ make -j"$JOBS" tools mmake
 make -j"$JOBS" contrib-regina-module workbench-libs-rexxsyslib
 make -j"$JOBS" contrib-regina-rexxmast-arosc
 
+# Capture the produced executable format before publishing it.  This catches
+# loader/startup mismatches separately from guest-side ARexx failures.
+REXXMAST_BUILT=$(find "$WORK/build/bin/amiga-m68k/AROS" -type f -name 'RexxMast' -print -quit)
+test -n "$REXXMAST_BUILT"
+{
+  echo "rexxmast_path=$REXXMAST_BUILT"
+  file "$REXXMAST_BUILT" || true
+  "$WORK/toolchain/bin/m68k-aros-readelf" -h "$REXXMAST_BUILT" 2>/dev/null || true
+} > "$OUT/RexxMast-format.txt"
+
 find "$WORK/build/bin/amiga-m68k/AROS" -type f \( -name 'regina.library' -o -name 'RexxMast' \) -print -exec cp {} "$OUT/" \;
 
 test -s "$OUT/regina.library"
