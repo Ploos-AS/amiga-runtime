@@ -16,7 +16,7 @@ usage:
   amiga-runtime backends
   amiga-runtime compare [PROFILE] --emulators LIST
   amiga-runtime targets
-  amiga-runtime test PROGRAM [--runtime aros|fs-uae|amiberry|fellowng|free-native] [--profile PROFILE]\n  amiga-runtime test-hunk PROGRAM [--profile PROFILE]
+  amiga-runtime test PROGRAM [--runtime aros|fs-uae|amiberry|fellowng|free-native] [--profile PROFILE]\n  amiga-runtime test-hunk PROGRAM [--profile PROFILE]\n  amiga-runtime qualify-contract PAYLOAD_DIR [--profile PROFILE]
 EOF
 }
 
@@ -131,6 +131,10 @@ p.write_text(json.dumps(d,indent=2)+"\n")
 print(json.dumps(d,separators=(",",":")))
 raise SystemExit(0 if d["status"]=="PASS" else 1)
 PY
+        ;;
+    qualify-contract)
+        shift
+        exec qualify-contract "$@"
         ;;
     test-hunk)
         shift
