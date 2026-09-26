@@ -32,14 +32,16 @@ test -f "$EVIDENCE/System/S/Startup-Sequence" || {
 }
 cp "$EVIDENCE/System/S/Startup-Sequence" "$EVIDENCE/System/S/Startup-Sequence.amiga-runtime-original"
 script=$(python3 - "$contract" <<'PY'
-import json,sys
+import json,pathlib,sys
 c=json.load(open(sys.argv[1]))
 p=c.get("payload",{}).get("script")
 if not p: raise SystemExit("contract has no payload.script")
+path=pathlib.PurePosixPath(p)
+if path.is_absolute() or ".." in path.parts:
+    raise SystemExit("unsafe payload.script")
 print(p)
 PY
 )
-case "$script" in /*|*".."*) echo "unsafe payload.script" >&2; exit 65 ;; esac
 {
     printf '\n; amiga-runtime classic qualification hook\n'
     printf 'Execute TEST:%s\n' "$script"
