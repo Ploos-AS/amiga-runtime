@@ -137,6 +137,8 @@ for rel in logs:
     if not p.is_file(): missing_logs.append(rel); continue
     lines.extend(p.read_text(errors="replace").splitlines())
 required=r["required_lines"]
+# Required evidence is exact line-oriented protocol data. Prefix/substring
+# matches are intentionally rejected (for example RC=0 must not match RC=01).
 missing=[x for x in required if x not in lines]
 status="PASS" if not missing_logs and not missing else "FAIL"
 pathlib.Path(out).write_text(json.dumps({"status":status,"logs":logs,"missing_logs":missing_logs,"required_lines":required,"missing_lines":missing},indent=2)+"\n")
