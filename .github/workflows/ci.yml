@@ -320,7 +320,7 @@ jobs:
       - name: Qualify Q3 core infrastructure
         run: |
           python3 tools/qualify-q3-core.py "$PWD"
-          jq -e '.qualification_level == "Q3" and .status == "PASS" and .arexx_required == false and (.backends["fs-uae"].guest_boot_proven == true) and (.backends["amiberry"].guest_boot_proven == true)' q3-core-evidence/result.json
+          jq -e '.qualification_level == "Q3" and .status == "PASS" and .arexx_required == false and (.backends["fs-uae"].guest_boot_proven == true) and (.backends["amiberry"].guest_boot_proven == true) and (.backends["fellowng"].guest_boot_proven == true)' q3-core-evidence/result.json
       - name: Verify result writer
         run: |
           mkdir -p evidence
