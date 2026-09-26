@@ -55,7 +55,8 @@ if 'amiga-runtime-rexxmast-main-enter' not in s:
         '   BPTR amiga_runtime_main_log = Open("RAM:amiga-runtime-rexxmast-argv", MODE_NEWFILE);\n'
         '   if (amiga_runtime_main_log) { FPrintf(amiga_runtime_main_log, "argc=%ld\\n", (LONG)argc); Close(amiga_runtime_main_log); }\n'
     )
-s = s.replace(
+if 'amiga-runtime-rexxmaster-created' not in s:
+    s = s.replace(
     '   if (!server) {\n',
     '   amiga_runtime_main_marker = Open(server ? "RAM:amiga-runtime-rexxmaster-created" : "RAM:amiga-runtime-rexxmaster-create-failed", MODE_NEWFILE);\n'
     '   if (amiga_runtime_main_marker) Close(amiga_runtime_main_marker);\n'
@@ -71,7 +72,8 @@ if 'BPTR amiga_runtime_marker;' not in s:
         'void server_process(void)\n{\n'
         '   BPTR amiga_runtime_marker;\n'
     )
-s = s.replace(
+if 'amiga-runtime-rexx-port-ready' not in s:
+    s = s.replace(
     '   port = CreatePort("REXX", 0);\n\n',
     '   port = CreatePort("REXX", 0);\n'
     '   amiga_runtime_marker = Open(port ? "RAM:amiga-runtime-rexx-port-ready" : "RAM:amiga-runtime-rexx-port-failed", MODE_NEWFILE);\n'
