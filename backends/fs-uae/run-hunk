@@ -33,12 +33,12 @@ case "$startup_path" in
     *) echo "invalid AROS Startup-Sequence path: $startup_path" >&2; exit 69 ;;
 esac
 startup="$tmp/Startup-Sequence"
-# Preserve the upstream AROS boot sequence. Replacing it prevents the system\n# from reaching a usable CLI before our payload command is executed.\ncp "$startup_path" "$startup"\ncat >>"$startup" <<EOF
+# Preserve the upstream AROS boot sequence. Replacing it prevents the system\n# from reaching a usable CLI before our payload command is executed.\ncp "$startup_path" "$startup"\ncat >>"$startup" <<'EOF'
 Echo "amiga-runtime payload start"
 C:Assign >NIL: Evidence "$EVIDENCE"
 Evidence:payload $payload_args >Evidence:guest-console.txt
-Echo "\$RC" >Evidence:guest-rc.txt
-If "\$RC" EQ "0"
+Echo "$RC" >Evidence:guest-rc.txt
+If "$RC" EQ "0"
   Echo "$MARKER" >Evidence:$MARKER
 EndIf
 EOF
