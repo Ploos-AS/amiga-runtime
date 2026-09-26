@@ -61,6 +61,10 @@ s = s.replace(
     '   if (amiga_runtime_main_marker) Close(amiga_runtime_main_marker);\n'
     '   if (!server) {\n'
 )
+s = s.replace(
+    'void server_process(void)\n{\n   BPTR amiga_runtime_marker;\n   BPTR amiga_runtime_marker;\n',
+    'void server_process(void)\n{\n   BPTR amiga_runtime_marker;\n'
+)
 if 'BPTR amiga_runtime_marker;' not in s:
     s = s.replace(
         'void server_process(void)\n{\n',
