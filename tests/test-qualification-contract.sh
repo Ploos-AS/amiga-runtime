@@ -72,4 +72,40 @@ printf "no-lines rc=%s\n" "$rc" >&2
 test "$rc" -ne 0
 grep -q 'required_lines' /tmp/contract-lines.err
 
+# Classic backend must fail closed when the emulator process fails even if
+# guest logs contain every required marker.
+mkdir -p "$tmp/classic/System/S" "$tmp/classic/profiles" "$tmp/classic/evidence"
+printf 'EndCLI >NIL:\n' >"$tmp/classic/System/S/Startup-Sequence"
+: >"$tmp/classic/kick.rom"
+cat >"$tmp/classic/profiles/a500-os204.conf" <<'EOF'
+machine=a500
+cpu=68000
+EOF
+cat >"$tmp/bin/fake-fs-uae" <<EOF
+#!/bin/sh
+mkdir -p "$tmp/classic/evidence/Test/T"
+printf 'RC=0\\nSYNTHETIC_PASS\\n' >"$tmp/classic/evidence/Test/T/a.log"
+printf 'RC=0\\n' >"$tmp/classic/evidence/Test/T/b.log"
+exit 7
+EOF
+chmod +x "$tmp/bin/fake-fs-uae"
+set +e
+AMIGA_RUNTIME_PROFILES="$tmp/classic/profiles" \
+AMIGA_RUNTIME_EVIDENCE="$tmp/classic/evidence" \
+AMIGA_RUNTIME_KICKSTART_ROM="$tmp/classic/kick.rom" \
+AMIGA_RUNTIME_SYSTEM_DIR="$tmp/classic/System" \
+FS_UAE="$tmp/bin/fake-fs-uae" \
+sh backends/fs-uae/qualify-classic-contract "$tmp/good" a500-os204 \
+  >"$tmp/classic.out" 2>"$tmp/classic.err"
+rc=$?
+set -e
+printf "classic emulator-failure rc=%s\n" "$rc" >&2
+test "$rc" -ne 0
+python3 - "$tmp/classic/evidence/result.json" <<'PY'
+import json,sys
+r=json.load(open(sys.argv[1]))
+assert r["emulator_exit_code"] != 0, r
+assert r["status"] == "FAIL", r
+PY
+
 echo "qualification contract validation: PASS"
