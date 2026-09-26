@@ -38,7 +38,7 @@ startup="$tmp/Startup-Sequence"
 cp "$startup_path" "$startup"
 cat >>"$startup" <<'EOF'
 Echo "amiga-runtime payload start"
-C:Assign >NIL: Evidence "$EVIDENCE"
+C:Assign >NIL: Evidence DH0:
 Evidence:payload $payload_args >Evidence:guest-console.txt
 Echo "$RC" >Evidence:guest-rc.txt
 If "$RC" EQ "0"
