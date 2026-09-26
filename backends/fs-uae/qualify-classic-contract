@@ -144,7 +144,14 @@ raise SystemExit(0 if status=="PASS" else 1)
 PY
 verify_rc=$?
 set -e
-if test "$verify_rc" -eq 0; then status=PASS; else status=FAIL; fi
+# Both guest evidence and the emulator process must complete cleanly.
+# A timeout/crash must never be reported as Q4 PASS merely because stale or
+# partially-written marker logs happen to satisfy the contract.
+if test "$verify_rc" -eq 0 && test "$emu_rc" -eq 0; then
+    status=PASS
+else
+    status=FAIL
+fi
 
 python3 - "$EVIDENCE/result.json" "$profile" "$emu_rc" "$status" <<'PY'
 import json,pathlib,sys
