@@ -35,8 +35,17 @@ case "$startup_path" in
 esac
 startup="$tmp/Startup-Sequence"
 cp "$startup_path" "$startup"
+# Instrument the real AROS startup chain so CI can distinguish "startup never
+# entered" from "startup entered but did not reach the payload tail".
+probe="$tmp/Startup-Sequence.probed"
+{
+  echo 'Echo "AMIGA_RUNTIME_STARTUP_ENTERED" >Evidence:startup-entered.txt'
+  cat "$startup"
+} >"$probe"
+mv "$probe" "$startup"
 cat >>"$startup" <<EOF
 
+Echo "AMIGA_RUNTIME_STARTUP_TAIL" >Evidence:startup-tail.txt
 Echo "amiga-runtime payload start"
 Evidence:payload $payload_args >Evidence:guest-console.txt
 Echo "\$RC" >Evidence:guest-rc.txt
