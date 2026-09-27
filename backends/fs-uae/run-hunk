@@ -38,6 +38,10 @@ guest_iso="$EVIDENCE/aros-payload.iso"
 rm -f "$guest_iso"
 xorriso -indev "$AROS_ISO" -outdev "$guest_iso" -update "$startup" /S/User-Startup -commit >/dev/null 2>&1
 test -s "$guest_iso"
+# Verify that the guest startup hook was actually committed to the ISO.
+verify_startup="$tmp/User-Startup.verify"
+xorriso -osirrox on -indev "$guest_iso" -extract /S/User-Startup "$verify_startup" >/dev/null 2>&1
+cmp "$startup" "$verify_startup"
 
 config="$EVIDENCE/fs-uae.conf"
 python3 "$GENERATOR" "$PROFILES/$profile.conf" /dev/null /dev/null "$guest_iso" /dev/null "$config" "$EVIDENCE"
