@@ -25,8 +25,18 @@ sha256sum "$program" > "$EVIDENCE/payload.sha256"
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT HUP INT TERM
-startup="$tmp/User-Startup"
-cat >"$startup" <<EOF
+startup_path_file="$AROS_DIR/system-startup-sequence-path.txt"
+test -s "$startup_path_file" || { echo "missing prepared AROS Startup-Sequence path" >&2; exit 69; }
+startup_path=$(cat "$startup_path_file")
+test -s "$startup_path" || { echo "missing prepared AROS Startup-Sequence: $startup_path" >&2; exit 69; }
+case "$startup_path" in
+  "$AROS_DIR/system-root/"*) guest_startup="/${startup_path#"$AROS_DIR/system-root/"}" ;;
+  *) echo "unexpected prepared AROS Startup-Sequence path: $startup_path" >&2; exit 69 ;;
+esac
+startup="$tmp/Startup-Sequence"
+cp "$startup_path" "$startup"
+cat >>"$startup" <<EOF
+
 Echo "amiga-runtime payload start"
 Evidence:payload $payload_args >Evidence:guest-console.txt
 Echo "\$RC" >Evidence:guest-rc.txt
@@ -36,11 +46,10 @@ EndIf
 EOF
 guest_iso="$EVIDENCE/aros-payload.iso"
 rm -f "$guest_iso"
-xorriso -indev "$AROS_ISO" -outdev "$guest_iso" -update "$startup" /S/User-Startup -commit >/dev/null 2>&1
+xorriso -indev "$AROS_ISO" -outdev "$guest_iso" -update "$startup" "$guest_startup" -commit >/dev/null 2>&1
 test -s "$guest_iso"
-# Verify that the guest startup hook was actually committed to the ISO.
-verify_startup="$tmp/User-Startup.verify"
-xorriso -osirrox on -indev "$guest_iso" -extract /S/User-Startup "$verify_startup" >/dev/null 2>&1
+verify_startup="$tmp/Startup-Sequence.verify"
+xorriso -osirrox on -indev "$guest_iso" -extract "$guest_startup" "$verify_startup" >/dev/null 2>&1
 cmp "$startup" "$verify_startup"
 
 config="$EVIDENCE/fs-uae.conf"
