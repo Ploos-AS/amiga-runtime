@@ -27,46 +27,55 @@ test -f "$GENERATOR" || { echo "missing FS-UAE config generator: $GENERATOR" >&2
 cp "$program" "$EVIDENCE/payload"
 sha256sum "$program" > "$EVIDENCE/payload.sha256"
 
-tmp=$(mktemp -d)
-trap 'rm -rf "$tmp"' EXIT HUP INT TERM
+system_root="$AROS_DIR/system-root"
 startup_path_file="$AROS_DIR/system-startup-sequence-path.txt"
+test -d "$system_root" || { echo "missing prepared AROS system root" >&2; exit 69; }
 test -s "$startup_path_file" || { echo "missing prepared AROS Startup-Sequence path" >&2; exit 69; }
 startup_path=$(cat "$startup_path_file")
 test -s "$startup_path" || { echo "missing prepared AROS Startup-Sequence: $startup_path" >&2; exit 69; }
-case "$startup_path" in
-  "$AROS_DIR/system-root/"*) guest_startup="/${startup_path#"$AROS_DIR/system-root/"}" ;;
-  *) echo "unexpected prepared AROS Startup-Sequence path: $startup_path" >&2; exit 69 ;;
-esac
-startup="$tmp/Startup-Sequence"
-cp "$startup_path" "$startup"
-# Instrument the real AROS startup chain so CI can distinguish "startup never
-# entered" from "startup entered but did not reach the payload tail".
-probe="$tmp/Startup-Sequence.probed"
-{
-  echo 'Echo "AMIGA_RUNTIME_STARTUP_ENTERED" >Evidence:startup-entered.txt'
-  cat "$startup"
-} >"$probe"
-mv "$probe" "$startup"
-cat >>"$startup" <<EOF
 
-Echo "AMIGA_RUNTIME_STARTUP_TAIL" >Evidence:startup-tail.txt
+# Boot the same writable System: tree used by the qualified AROS guest path.
+# Keep the pristine prepared tree intact by restoring Startup-Sequence after
+# the run; the payload and result markers live on the separate Evidence: drive.
+original="$startup_path.amiga-runtime-original"
+cp "$startup_path" "$original"
+trap 'cp "$original" "$startup_path" 2>/dev/null || true; rm -f "$original"' EXIT HUP INT TERM
+cat >"$startup_path" <<EOF
+C:Assign >NIL: T: RAM:
+C:Assign >NIL: ENV: RAM:
+C:Assign >NIL: ENVARC: RAM:
+C:Assign >NIL: LIBS: System:Libs
+C:Assign >NIL: C: System:C
+C:Assign >NIL: DEVS: System:Devs
+C:Assign >NIL: L: System:L
+Echo "AMIGA_RUNTIME_STARTUP_ENTERED" >Evidence:startup-entered.txt
 Echo "amiga-runtime payload start"
 Evidence:payload $payload_args >Evidence:guest-console.txt
 Echo "\$RC" >Evidence:guest-rc.txt
 If "\$RC" EQ "0"
   Echo "$MARKER" >Evidence:$MARKER
 EndIf
+Echo "AMIGA_RUNTIME_STARTUP_DONE" >Evidence:startup-done.txt
 EOF
-guest_iso="$EVIDENCE/aros-payload.iso"
-rm -f "$guest_iso"
-xorriso -indev "$AROS_ISO" -outdev "$guest_iso" -update "$startup" "$guest_startup" -commit >/dev/null 2>&1
-test -s "$guest_iso"
-verify_startup="$tmp/Startup-Sequence.verify"
-xorriso -osirrox on -indev "$guest_iso" -extract "$guest_startup" "$verify_startup" >/dev/null 2>&1
-cmp "$startup" "$verify_startup"
 
 config="$EVIDENCE/fs-uae.conf"
-python3 "$GENERATOR" "$PROFILES/$profile.conf" "$AROS_ROM" "$AROS_EXT" "$guest_iso" /dev/null "$config" "$EVIDENCE"
+cat >"$config" <<EOF
+[fs-uae]
+amiga_model = A1200
+kickstart_file = $AROS_ROM
+kickstart_ext_file = $AROS_EXT
+hard_drive_0 = $system_root
+hard_drive_0_label = System
+hard_drive_0_boot_priority = 20
+hard_drive_1 = $EVIDENCE
+hard_drive_1_label = Evidence
+hard_drive_1_boot_priority = -20
+cdrom_drive_0 = $AROS_ISO
+cdrom_drive_0_media = 0
+fullscreen = 0
+window_width = 640
+window_height = 512
+EOF
 
 XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/tmp/amiga-runtime-xdg}
 mkdir -p "$XDG_RUNTIME_DIR"
