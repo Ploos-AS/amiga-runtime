@@ -36,7 +36,7 @@ EndIf
 EOF
 guest_iso="$EVIDENCE/aros-payload.iso"
 rm -f "$guest_iso"
-xorriso -indev "$AROS_ISO" -outdev "$guest_iso" -update "$startup" "$guest_startup" -commit >/dev/null 2>&1
+xorriso -indev "$AROS_ISO" -outdev "$guest_iso" -update "$startup" /S/User-Startup -commit >/dev/null 2>&1
 test -s "$guest_iso"
 
 config="$EVIDENCE/fs-uae.conf"
