@@ -19,6 +19,7 @@ on:
         options:
           - a500-os204
           - a500plus-os2
+          - a600-os3
           - a1200-020-os3
 
 jobs:
@@ -56,8 +57,8 @@ jobs:
           # optional for public/same-repository artifacts and must be scoped
           # read-only when configured.
           case "$PAYLOAD_ARTIFACT_URL" in
-            https://github.com/Ploos-AS/*/actions/runs/*/artifacts/*|https://api.github.com/repos/Ploos-AS/*/actions/artifacts/*/zip) ;;
-            *) echo "payload_artifact_url must be a Ploos-AS GitHub Actions artifact URL" >&2; exit 2 ;;
+            https://github.com/Ploos-AS/*/actions/runs/*/artifacts/*|https://api.github.com/repos/Ploos-AS/*/actions/artifacts/*/zip|https://github.com/Godot2Amiga/godot2amiga/actions/runs/*/artifacts/*|https://api.github.com/repos/Godot2Amiga/godot2amiga/actions/artifacts/*/zip) ;;
+            *) echo "payload_artifact_url must be an approved GitHub Actions artifact URL" >&2; exit 2 ;;
           esac
           curl --fail --location --silent --show-error \
             -H "Authorization: Bearer $GITHUB_TOKEN" \
