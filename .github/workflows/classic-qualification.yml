@@ -65,8 +65,15 @@ jobs:
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "$PAYLOAD_ARTIFACT_URL" -o "$RUNNER_TEMP/amiga-classic-payload.zip"
           unzip -q "$RUNNER_TEMP/amiga-classic-payload.zip" -d "$RUNNER_TEMP/amiga-classic-payload"
-          test -f "$RUNNER_TEMP/amiga-classic-payload/build/m3_3_runtime/amiga-runtime.json"
-          echo "CLASSIC_PAYLOAD_PATH=$RUNNER_TEMP/amiga-classic-payload/build/m3_3_runtime" >> "$GITHUB_ENV"
+          contract=$(find "$RUNNER_TEMP/amiga-classic-payload" -type f -name amiga-runtime.json -print)
+          contract_count=$(printf '%s\n' "$contract" | sed '/^$/d' | wc -l)
+          test "$contract_count" -eq 1 || {
+            echo "artifact must contain exactly one amiga-runtime.json contract" >&2
+            printf '%s\n' "$contract" >&2
+            exit 2
+          }
+          payload_dir=$(dirname "$contract")
+          echo "CLASSIC_PAYLOAD_PATH=$payload_dir" >> "$GITHUB_ENV"
 
       - name: Run project contract
         env:
