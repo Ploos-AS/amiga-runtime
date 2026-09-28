@@ -76,7 +76,7 @@ PY
 
 machine=$(sed -n 's/^machine=//p' "$PROFILES/$profile.conf")
 cpu=$(sed -n 's/^cpu=//p' "$PROFILES/$profile.conf")
-case "$machine" in a500) model=A500 ;; a500plus) model=A500+ ;; a1200) model=A1200 ;; *) echo "unsupported machine" >&2; exit 65 ;; esac
+case "$machine" in a500) model=A500 ;; a500plus) model=A500+ ;; a600) model=A600 ;; a1200) model=A1200 ;; *) echo "unsupported machine" >&2; exit 65 ;; esac
 
 config="$EVIDENCE/classic.fs-uae"
 cat >"$config" <<EOF
