@@ -60,7 +60,7 @@ def safe(rel):
     return q
 payload=c.get("payload",{})
 paths=[]
-for key in ("library","program","script"):
+for key in ("library","program","script","document"):
     if key in payload: paths.append(payload[key])
 paths += payload.get("programs",[])
 for rel in paths:
@@ -72,6 +72,13 @@ if "log" in result: logs.insert(0,result["log"])
 if not logs: raise SystemExit("contract has no result log")
 for rel in logs: safe(rel)
 if not result.get("required_lines"): raise SystemExit("contract has no required_lines")
+identity=c.get("artifact_identity")
+if identity:
+    import hashlib
+    rel=identity.get("path"); expected=identity.get("sha256")
+    if not rel or not expected: raise SystemExit("incomplete artifact_identity")
+    actual=hashlib.sha256(safe(rel).read_bytes()).hexdigest()
+    if actual != expected: raise SystemExit("artifact identity mismatch")
 PY
 
 machine=$(sed -n 's/^machine=//p' "$PROFILES/$profile.conf")
@@ -143,7 +150,8 @@ required=r["required_lines"]
 # matches are intentionally rejected (for example RC=0 must not match RC=01).
 missing=[x for x in required if x not in lines]
 status="PASS" if not missing_logs and not missing else "FAIL"
-pathlib.Path(out).write_text(json.dumps({"status":status,"logs":logs,"missing_logs":missing_logs,"required_lines":required,"missing_lines":missing},indent=2)+"\n")
+artifact_sha256=c.get("artifact_identity",{}).get("sha256")
+pathlib.Path(out).write_text(json.dumps({"status":status,"artifact_sha256":artifact_sha256,"logs":logs,"missing_logs":missing_logs,"required_lines":required,"missing_lines":missing},indent=2)+"\n")
 raise SystemExit(0 if status=="PASS" else 1)
 PY
 verify_rc=$?
@@ -157,12 +165,13 @@ else
     status=FAIL
 fi
 
-python3 - "$EVIDENCE/result.json" "$profile" "$emu_rc" "$status" <<'PY'
+python3 - "$EVIDENCE/result.json" "$profile" "$emu_rc" "$status" "$contract" <<'PY'
 import json,pathlib,sys
-out,profile,rc,status=sys.argv[1:]
+out,profile,rc,status,contract=sys.argv[1:]
+c=json.load(open(contract)); artifact_sha256=c.get("artifact_identity",{}).get("sha256")
 pathlib.Path(out).write_text(json.dumps({
  "schema":"amiga-runtime-result-v1","qualification_level":"classic-contract",
  "runtime":"amigaos","emulator":"fs-uae","profile":profile,
- "emulator_exit_code":int(rc),"status":status},indent=2)+"\n")
+ "emulator_exit_code":int(rc),"status":status,"artifact_sha256":artifact_sha256},indent=2)+"\n")
 PY
 test "$status" = PASS
