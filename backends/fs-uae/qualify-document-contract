@@ -1,0 +1,20 @@
+#!/bin/sh
+set -eu
+payload=${1:?usage: qualify-document-contract PAYLOAD_DIR PROFILE}
+profile=${2:?usage: qualify-document-contract PAYLOAD_DIR PROFILE}
+contract="$payload/amiga-runtime.json"
+test -s "$contract" || { echo "missing contract" >&2; exit 66; }
+python3 - "$contract" "$payload" <<'PY'
+import json,pathlib,sys
+c=json.load(open(sys.argv[1])); root=pathlib.Path(sys.argv[2]).resolve()
+p=c.get("payload",{})
+if p.get("kind")!="document": raise SystemExit("payload.kind must be document")
+for key in ("document","script"):
+    rel=p.get(key)
+    if not rel: raise SystemExit("missing payload."+key)
+    x=pathlib.Path(rel)
+    if x.is_absolute() or ".." in x.parts: raise SystemExit("unsafe "+key)
+    if not (root/x).is_file(): raise SystemExit("missing "+rel)
+if not p.get("application"): raise SystemExit("missing payload.application")
+PY
+exec /opt/amiga-runtime/backends/fs-uae/qualify-classic-contract "$payload" "$profile"
