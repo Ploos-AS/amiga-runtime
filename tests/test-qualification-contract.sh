@@ -112,6 +112,8 @@ PY
 mkdir -p "$tmp/document"
 : >"$tmp/document/demo.guide"
 : >"$tmp/document/run-doc"
+: >"$tmp/document/launcher"
+: >"$tmp/document/probe.rexx"
 cat >"$tmp/document/amiga-runtime.json" <<'EOF'
 {
   "schema": 1,
@@ -123,7 +125,9 @@ cat >"$tmp/document/amiga-runtime.json" <<'EOF'
     "kind": "document",
     "document": "demo.guide",
     "application": "AmigaGuide",
-    "script": "run-doc"
+    "script": "run-doc",
+    "launcher": "launcher",
+    "probe": "probe.rexx"
   },
   "result": {
     "log": "result.log",
@@ -148,5 +152,21 @@ rc=$?
 set -e
 test "$rc" -eq 69 || { cat /tmp/contract-doc.out >&2; cat /tmp/contract-doc.err >&2; exit 1; }
 grep -q 'DOCUMENT_BACKEND_REACHED' /tmp/contract-doc.out
+
+# Missing document helpers must fail during top-level preflight, before the
+# document backend is invoked.
+cp -R "$tmp/document" "$tmp/document-no-launcher"
+rm "$tmp/document-no-launcher/launcher"
+set +e
+PATH="$tmp/bin:$PATH" sh bin/qualify-contract "$tmp/document-no-launcher" \
+  >"$tmp/contract-doc-missing.out" 2>"$tmp/contract-doc-missing.err"
+rc=$?
+set -e
+test "$rc" -ne 0
+grep -q 'missing payload file: launcher' "$tmp/contract-doc-missing.err"
+if grep -q 'DOCUMENT_BACKEND_REACHED' "$tmp/contract-doc-missing.out"; then
+  echo "document backend was reached despite missing launcher" >&2
+  exit 1
+fi
 
 echo "qualification contract validation: PASS"
