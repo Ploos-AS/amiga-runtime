@@ -24,7 +24,7 @@ def safe(rel):
     return q
 p=c.get("payload",{})
 paths=[]
-for key in ("library","program","script"):
+for key in ("library","program","script","document"):
     if key in p: paths.append(p[key])
 paths += p.get("programs",[])
 if not paths: raise SystemExit("contract has no payload files")
@@ -51,6 +51,8 @@ program=$(python3 - "$contract" "$payload" <<'PY'
 import json,pathlib,sys
 c=json.load(open(sys.argv[1])); p=c["payload"]
 program=p.get("program")
+if p.get("kind") == "document":
+    program=p.get("document")
 if program is None:
     programs=p.get("programs",[])
     if not programs: raise SystemExit("contract has no program")
@@ -58,6 +60,19 @@ if program is None:
 print(pathlib.Path(sys.argv[2])/program)
 PY
 )
+kind=$(python3 - "$contract" <<'PY'
+import json,sys
+print(json.load(open(sys.argv[1])).get("payload",{}).get("kind","program"))
+PY
+)
+if [ "$kind" = document ]; then
+ case "$profile" in
+  a500-os204) exec backend-fs-uae qualify-document-contract "$payload" a500 ;;
+  a500plus-os2) exec backend-fs-uae qualify-document-contract "$payload" a500plus ;;
+  a1200-020-os3) exec backend-fs-uae qualify-document-contract "$payload" a1200-020 ;;
+  *) echo "document qualification requires a classic AmigaOS profile" >&2; exit 65 ;;
+ esac
+fi
 case "$profile" in
  a500-os204) exec backend-fs-uae qualify-classic-contract "$payload" a500 ;;
  a500plus-os2) exec backend-fs-uae qualify-classic-contract "$payload" a500plus ;;
