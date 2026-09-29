@@ -108,4 +108,45 @@ assert r["emulator_exit_code"] != 0, r
 assert r["status"] == "FAIL", r
 PY
 
+# Document contracts must validate and route to the document backend.
+mkdir -p "$tmp/document"
+: >"$tmp/document/demo.guide"
+: >"$tmp/document/run-doc"
+cat >"$tmp/document/amiga-runtime.json" <<'EOF'
+{
+  "schema": 1,
+  "project": "SyntheticDocument",
+  "milestone": "document-contract-ci",
+  "architecture": "m68k",
+  "emulator_profiles": ["a500plus-os2"],
+  "payload": {
+    "kind": "document",
+    "document": "demo.guide",
+    "application": "AmigaGuide",
+    "script": "run-doc"
+  },
+  "result": {
+    "log": "result.log",
+    "required_lines": ["DOCUMENT_OPEN=PASS"]
+  },
+  "policy": {
+    "roms_in_repository": false,
+    "amigaos_files_in_repository": false
+  }
+}
+EOF
+cat >"$tmp/bin/backend-fs-uae" <<'EOF'
+#!/bin/sh
+test "$1" = "qualify-document-contract"
+echo DOCUMENT_BACKEND_REACHED
+exit 69
+EOF
+chmod +x "$tmp/bin/backend-fs-uae"
+set +e
+PATH="$tmp/bin:$PATH" sh bin/qualify-contract "$tmp/document" >/tmp/contract-doc.out 2>/tmp/contract-doc.err
+rc=$?
+set -e
+test "$rc" -eq 69 || { cat /tmp/contract-doc.out >&2; cat /tmp/contract-doc.err >&2; exit 1; }
+grep -q 'DOCUMENT_BACKEND_REACHED' /tmp/contract-doc.out
+
 echo "qualification contract validation: PASS"
