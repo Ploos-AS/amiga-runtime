@@ -24,7 +24,7 @@ def safe(rel):
     return q
 p=c.get("payload",{})
 paths=[]
-for key in ("library","program","script","document"):
+for key in ("library","program","script","document","launcher","probe"):
     if key in p: paths.append(p[key])
 paths += p.get("programs",[])
 if not paths: raise SystemExit("contract has no payload files")
