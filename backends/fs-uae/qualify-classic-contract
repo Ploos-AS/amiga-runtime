@@ -60,7 +60,7 @@ def safe(rel):
     return q
 payload=c.get("payload",{})
 paths=[]
-for key in ("library","program","script","document"):
+for key in ("library","program","script","document","launcher","probe"):
     if key in payload: paths.append(payload[key])
 paths += payload.get("programs",[])
 for rel in paths:
