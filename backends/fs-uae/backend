@@ -15,6 +15,9 @@ case "$op" in
     run-aros)
         exec run-aros-fs-uae "$@"
         ;;
+    qualify-classic-contract)
+        exec /opt/amiga-runtime/backends/fs-uae/qualify-classic-contract "$@"
+        ;;
     qualify-document-contract)
         exec /opt/amiga-runtime/backends/fs-uae/qualify-document-contract "$@"
         ;;
@@ -25,7 +28,7 @@ case "$op" in
         exec /opt/amiga-runtime/backends/fs-uae/run-native-rom "$@"
         ;;
     *)
-        echo "usage: backend-fs-uae probe|qualify-aros-boot|run-aros|qualify-document-contract|run-hunk|run-native-rom ..." >&2
+        echo "usage: backend-fs-uae probe|qualify-aros-boot|run-aros|qualify-classic-contract|qualify-document-contract|run-hunk|run-native-rom ..." >&2
         exit 64
         ;;
 esac
