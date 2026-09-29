@@ -1,0 +1,74 @@
+name: Reusable project qualification
+
+on:
+  workflow_call:
+    inputs:
+      payload_artifact:
+        description: Q1 payload artifact containing amiga-runtime.json and program files
+        required: true
+        type: string
+      profile:
+        description: Optional amiga-runtime profile override
+        required: false
+        type: string
+        default: ''
+      runtime_image:
+        description: Immutable amiga-runtime OCI reference (digest or sha-* tag)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  qualify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require immutable runtime image
+        shell: bash
+        env:
+          RUNTIME_IMAGE: ${{ inputs.runtime_image }}
+        run: |
+          case "$RUNTIME_IMAGE" in
+            *@sha256:*|*:sha-*) ;;
+            *) echo "runtime_image must be an immutable digest or sha-* tag" >&2; exit 64 ;;
+          esac
+
+      - name: Download Q1 payload
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.payload_artifact }}
+          path: runtime-input
+
+      - name: Verify project contract
+        run: |
+          test -s runtime-input/amiga-runtime.json
+          jq -e '.schema == 1 and .architecture == "m68k"' runtime-input/amiga-runtime.json >/dev/null
+
+      - name: Pull runtime image
+        run: docker pull "${{ inputs.runtime_image }}"
+
+      - name: Qualify project payload
+        shell: bash
+        env:
+          RUNTIME_IMAGE: ${{ inputs.runtime_image }}
+          PROFILE: ${{ inputs.profile }}
+        run: |
+          mkdir -p runtime-evidence
+          args=(qualify-contract /work/input)
+          if [ -n "$PROFILE" ]; then
+            args+=(--profile "$PROFILE")
+          fi
+          docker run --rm \
+            -v "$PWD/runtime-input:/work/input:ro" \
+            -v "$PWD/runtime-evidence:/work/evidence" \
+            "$RUNTIME_IMAGE" "${args[@]}"
+
+      - name: Upload qualification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: amiga-runtime-project-evidence
+          path: runtime-evidence/
+          if-no-files-found: warn
