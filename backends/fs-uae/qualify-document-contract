@@ -9,7 +9,7 @@ import json,pathlib,sys
 c=json.load(open(sys.argv[1])); root=pathlib.Path(sys.argv[2]).resolve()
 p=c.get("payload",{})
 if p.get("kind")!="document": raise SystemExit("payload.kind must be document")
-for key in ("document","script"):
+for key in ("document","script","launcher","probe"):
     rel=p.get(key)
     if not rel: raise SystemExit("missing payload."+key)
     x=pathlib.Path(rel)
