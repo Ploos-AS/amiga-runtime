@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "name": "ploos-amiga-runtime-consumer",
+  "image": "ghcr.io/ploos-as/amiga-runtime",
+  "reproducible_reference": "digest-or-sha-tag",
+  "commands": {
+    "self_test": "amiga-runtime self-test",
+    "test_hunk": "amiga-runtime test-hunk",
+    "qualify_contract": "amiga-runtime qualify-contract"
+  },
+  "handoff": {
+    "from": "Ploos-AS/amiga-dev",
+    "payload_contract": "amiga-runtime.json",
+    "input_mount": "/work/input",
+    "evidence_mount": "/work/evidence"
+  },
+  "qualification_levels": ["Q0", "Q1", "Q2", "Q3", "Q4", "Q5"],
+  "redistribution": {
+    "proprietary_kickstart": false,
+    "proprietary_workbench": false,
+    "commercial_amigaos": false,
+    "license_keys": false
+  }
+}
