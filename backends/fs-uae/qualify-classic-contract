@@ -169,9 +169,13 @@ python3 - "$EVIDENCE/result.json" "$profile" "$emu_rc" "$status" "$contract" <<'
 import json,pathlib,sys
 out,profile,rc,status,contract=sys.argv[1:]
 c=json.load(open(contract)); artifact_sha256=c.get("artifact_identity",{}).get("sha256")
+meta=pathlib.Path(contract).with_name("eduarexx-metadata.json")
+source_revision=None
+if meta.is_file():
+    source_revision=json.loads(meta.read_text()).get("source_revision")
 pathlib.Path(out).write_text(json.dumps({
  "schema":"amiga-runtime-result-v1","qualification_level":"classic-contract",
  "runtime":"amigaos","emulator":"fs-uae","profile":profile,
- "emulator_exit_code":int(rc),"status":status,"artifact_sha256":artifact_sha256},indent=2)+"\n")
+ "emulator_exit_code":int(rc),"status":status,"artifact_sha256":artifact_sha256,"source_revision":source_revision},indent=2)+"\n")
 PY
 test "$status" = PASS
