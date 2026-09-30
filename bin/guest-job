@@ -1,15 +1,16 @@
 #!/bin/sh
 set -eu
-manifest=${1:?usage: guest-job MANIFEST [--profile PROFILE]}
+manifest=${1:?usage: guest-job MANIFEST [--profile PROFILE] [--workspace DIR]}
 shift
 profile=a1200-020
+workspace=.
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --profile) profile=${2:?missing profile}; shift 2 ;;
+    --workspace) workspace=${2:?missing workspace}; shift 2 ;;
     *) echo "unknown argument: $1" >&2; exit 64 ;;
   esac
 done
 validator=${AMIGA_RUNTIME_GUEST_JOB_VALIDATOR:-/opt/amiga-runtime/lib/validate-guest-job.py}
 python3 "$validator" "$manifest"
-echo "guest-job execution backend not yet configured for profile: $profile" >&2
-exit 77
+exec /opt/amiga-runtime/backends/fs-uae/guest-job "$manifest" "$profile" "$workspace"
