@@ -9,6 +9,9 @@ chmod +x "$tmp/bin/backend-fs-uae"
 : >"$tmp/good/C/test-a"
 : >"$tmp/good/C/test-b"
 : >"$tmp/good/S/run-test"
+cat >"$tmp/good/eduarexx-metadata.json" <<'EOF'
+{"source_revision":"0123456789abcdef0123456789abcdef01234567"}
+EOF
 cat >"$tmp/good/amiga-runtime.json" <<'EOF'
 {
   "schema": 1,
@@ -106,6 +109,9 @@ import json,sys
 r=json.load(open(sys.argv[1]))
 assert r["emulator_exit_code"] != 0, r
 assert r["status"] == "FAIL", r
+assert r["source_revision"] == "0123456789abcdef0123456789abcdef01234567", r
+v=json.load(open(sys.argv[1].replace("result.json","verification.json")))
+assert v["source_revision"] == r["source_revision"], (v,r)
 PY
 
 # Document contracts must validate and route to the document backend.
