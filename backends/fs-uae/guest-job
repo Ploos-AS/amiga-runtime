@@ -1,0 +1,117 @@
+#!/bin/sh
+set -eu
+
+manifest=${1:?usage: guest-job-fs-uae MANIFEST PROFILE WORKSPACE}
+profile=${2:?missing profile}
+workspace=${3:?missing workspace}
+
+PROFILES=${AMIGA_RUNTIME_PROFILES:-/opt/amiga-runtime/profiles}
+AROS_DIR=${AROS_RUNTIME_DIR:-/opt/amiga-runtime/aros}
+EVIDENCE=${AMIGA_RUNTIME_EVIDENCE:-/work/evidence}
+TIMEOUT=${AMIGA_RUNTIME_TIMEOUT:-60}
+validator=${AMIGA_RUNTIME_GUEST_JOB_VALIDATOR:-/opt/amiga-runtime/lib/validate-guest-job.py}
+
+python3 "$validator" "$manifest"
+test -d "$workspace" || { echo "workspace not found: $workspace" >&2; exit 66; }
+test -f "$PROFILES/$profile.conf" || { echo "unknown profile: $profile" >&2; exit 66; }
+
+mkdir -p "$EVIDENCE"
+rm -rf "$EVIDENCE/job-work"
+cp -a "$workspace" "$EVIDENCE/job-work"
+
+AROS_ISO=${AROS_BOOT_IMAGE_PREPARED:-"$AROS_DIR/aros.iso"}
+AROS_ROM=${AROS_ROM_PREPARED:-"$AROS_DIR/aros-rom.bin"}
+AROS_EXT=${AROS_EXT_PREPARED:-"$AROS_DIR/aros-ext.bin"}
+system_root="$AROS_DIR/system-root"
+startup_path_file="$AROS_DIR/system-startup-sequence-path.txt"
+
+for f in "$AROS_ISO" "$AROS_ROM" "$AROS_EXT" "$startup_path_file"; do
+  test -s "$f" || { echo "missing prepared AROS asset: $f" >&2; exit 69; }
+done
+test -d "$system_root" || { echo "missing prepared AROS system root" >&2; exit 69; }
+startup_path=$(cat "$startup_path_file")
+test -s "$startup_path" || { echo "missing Startup-Sequence" >&2; exit 69; }
+
+python3 - "$manifest" "$EVIDENCE/job-script" <<'PY'
+import json,pathlib,shlex,sys
+d=json.load(open(sys.argv[1]))
+def aq(s):
+    if any(c in s for c in '\n\r'):
+        raise SystemExit("newline in guest token")
+    return '"' + s.replace('"','*""') + '"'
+lines=[]
+for name,target in d.get("assigns",{}).items():
+    lines.append(f"Assign {name} {aq(target)}")
+cmd=" ".join([aq(d["command"])] + [aq(x) for x in d.get("arguments",[])])
+lines += [
+    "CD Evidence:job-work",
+    cmd + " >Evidence:guest-console.txt",
+    'Echo "$RC" >Evidence:guest-rc.txt',
+]
+for i,rel in enumerate(d.get("expected_artifacts",[])):
+    lines.append(f'If EXISTS {aq(rel)}')
+    lines.append(f'  Echo "ARTIFACT:{i}:OK" >>Evidence:artifact-status.txt')
+    lines.append("Else")
+    lines.append(f'  Echo "ARTIFACT:{i}:MISSING" >>Evidence:artifact-status.txt')
+    lines.append("EndIf")
+pathlib.Path(sys.argv[2]).write_text("\n".join(lines)+"\n")
+PY
+
+original="$startup_path.amiga-runtime-original"
+cp "$startup_path" "$original"
+trap 'cp "$original" "$startup_path" 2>/dev/null || true; rm -f "$original"' EXIT HUP INT TERM
+cat >"$startup_path" <<EOF
+C:Assign >NIL: T: RAM:
+C:Assign >NIL: ENV: RAM:
+C:Assign >NIL: ENVARC: RAM:
+C:Assign >NIL: LIBS: System:Libs
+C:Assign >NIL: C: System:C
+C:Assign >NIL: DEVS: System:Devs
+C:Assign >NIL: L: System:L
+Execute Evidence:job-script
+Echo "AMIGA_RUNTIME_GUEST_JOB_DONE" >Evidence:guest-job-done.txt
+EOF
+
+config="$EVIDENCE/fs-uae.conf"
+python3 /opt/amiga-runtime/lib/generate-fs-uae-config.py "$PROFILES/$profile.conf" "$AROS_ROM" "$AROS_EXT" "$AROS_ISO" /dev/null "$config"
+cat >>"$config" <<EOF
+hard_drive_0 = $system_root
+hard_drive_0_label = System
+hard_drive_0_boot_priority = 20
+hard_drive_1 = $EVIDENCE
+hard_drive_1_label = Evidence
+hard_drive_1_boot_priority = -20
+EOF
+
+XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/tmp/amiga-runtime-xdg}
+mkdir -p "$XDG_RUNTIME_DIR"; chmod 0700 "$XDG_RUNTIME_DIR"
+export XDG_RUNTIME_DIR LIBGL_ALWAYS_SOFTWARE=1
+
+set +e
+timeout "$TIMEOUT" xvfb-run -a -s '-screen 0 1024x768x24 +extension GLX' fs-uae "$config" >"$EVIDENCE/fs-uae.stdout.log" 2>"$EVIDENCE/fs-uae.stderr.log"
+emulator_rc=$?
+set -e
+
+python3 - "$manifest" "$EVIDENCE" "$profile" "$emulator_rc" <<'PY'
+import hashlib,json,pathlib,sys
+m=json.load(open(sys.argv[1])); e=pathlib.Path(sys.argv[2]); profile=sys.argv[3]
+try: guest_rc=int((e/"guest-rc.txt").read_text().strip())
+except Exception: guest_rc=None
+arts=[]
+ok=True
+for rel in m.get("expected_artifacts",[]):
+    p=e/"job-work"/rel
+    exists=p.is_file()
+    item={"path":rel,"exists":exists}
+    if exists:
+        item["sha256"]=hashlib.sha256(p.read_bytes()).hexdigest()
+    else: ok=False
+    arts.append(item)
+expected=m.get("expected_exit",0)
+done=(e/"guest-job-done.txt").exists()
+status="PASS" if done and guest_rc==expected and ok else "FAIL"
+d={"schema":"amiga-runtime-guest-job-v1","qualification_level":"Q2/Q3-guest-job","runtime":"aros-m68k","emulator":"fs-uae","profile":profile,"job_id":m["id"],"emulator_exit_code":int(sys.argv[4]),"guest_rc":guest_rc,"guest_completed":done,"guest_output":{"stdout":"guest-console.txt","encoding":"utf-8"},"artifacts":arts,"status":status}
+(e/"result.json").write_text(json.dumps(d,indent=2)+"\n")
+print(json.dumps(d,separators=(",",":")))
+raise SystemExit(0 if status=="PASS" else 1)
+PY
