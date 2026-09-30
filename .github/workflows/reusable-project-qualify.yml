@@ -16,6 +16,11 @@ on:
         description: Immutable amiga-runtime OCI reference (digest or sha-* tag)
         required: true
         type: string
+      runner:
+        description: Runner label; use self-hosted for classic AmigaOS qualification with local legal assets
+        required: false
+        type: string
+        default: ubuntu-latest
 
 permissions:
   contents: read
@@ -23,7 +28,7 @@ permissions:
 
 jobs:
   qualify:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     steps:
       - name: Require immutable runtime image
         shell: bash
@@ -60,10 +65,18 @@ jobs:
           if [ -n "$PROFILE" ]; then
             args+=(--profile "$PROFILE")
           fi
-          docker run --rm \
-            -v "$PWD/runtime-input:/work/input:ro" \
-            -v "$PWD/runtime-evidence:/work/evidence" \
-            "$RUNTIME_IMAGE" "${args[@]}"
+          docker_args=(--rm
+            -v "$PWD/runtime-input:/work/input:ro"
+            -v "$PWD/runtime-evidence:/work/evidence")
+          if [ -n "${AMIGA_RUNTIME_KICKSTART_ROM:-}" ]; then
+            test -f "$AMIGA_RUNTIME_KICKSTART_ROM"
+            docker_args+=(-v "$AMIGA_RUNTIME_KICKSTART_ROM:/work/assets/kickstart.rom:ro" -e AMIGA_RUNTIME_KICKSTART_ROM=/work/assets/kickstart.rom)
+          fi
+          if [ -n "${AMIGA_RUNTIME_SYSTEM_DIR:-}" ]; then
+            test -d "$AMIGA_RUNTIME_SYSTEM_DIR"
+            docker_args+=(-v "$AMIGA_RUNTIME_SYSTEM_DIR:/work/assets/System:ro" -e AMIGA_RUNTIME_SYSTEM_DIR=/work/assets/System)
+          fi
+          docker run "${docker_args[@]}" "$RUNTIME_IMAGE" "${args[@]}"
 
       - name: Upload qualification evidence
         if: always()
