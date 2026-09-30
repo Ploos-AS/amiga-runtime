@@ -114,6 +114,10 @@ data = {
     "emulator_exit_code": int(rc),
     "guest_rc": guest_rc,
     "guest_payload_executed": (e / "AMIGA_RUNTIME_PAYLOAD_OK").exists(),
+    "guest_output": {
+        "stdout": "guest-console.txt",
+        "encoding": "utf-8",
+    },
     "status": status,
 }
 pathlib.Path(out).write_text(json.dumps(data, indent=2) + "\n")
