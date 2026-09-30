@@ -151,7 +151,11 @@ required=r["required_lines"]
 missing=[x for x in required if x not in lines]
 status="PASS" if not missing_logs and not missing else "FAIL"
 artifact_sha256=c.get("artifact_identity",{}).get("sha256")
-pathlib.Path(out).write_text(json.dumps({"status":status,"artifact_sha256":artifact_sha256,"logs":logs,"missing_logs":missing_logs,"required_lines":required,"missing_lines":missing},indent=2)+"\n")
+meta=root/"eduarexx-metadata.json"
+source_revision=None
+if meta.is_file():
+    source_revision=json.loads(meta.read_text()).get("source_revision")
+pathlib.Path(out).write_text(json.dumps({"status":status,"artifact_sha256":artifact_sha256,"source_revision":source_revision,"logs":logs,"missing_logs":missing_logs,"required_lines":required,"missing_lines":missing},indent=2)+"\n")
 raise SystemExit(0 if status=="PASS" else 1)
 PY
 verify_rc=$?
