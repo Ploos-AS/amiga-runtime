@@ -17,6 +17,7 @@ usage:
   amiga-runtime compare [PROFILE] --emulators LIST
   amiga-runtime targets
   amiga-runtime test PROGRAM [--runtime aros|fs-uae|amiberry|fellowng|free-native] [--profile PROFILE]\n  amiga-runtime test-hunk PROGRAM [--profile PROFILE]\n  amiga-runtime qualify-contract PAYLOAD_DIR [--profile PROFILE]
+  amiga-runtime guest-job MANIFEST [--profile PROFILE]
 EOF
 }
 
@@ -135,6 +136,10 @@ PY
     qualify-contract)
         shift
         exec qualify-contract "$@"
+        ;;
+    guest-job)
+        shift
+        exec guest-job "$@"
         ;;
     test-hunk)
         shift
