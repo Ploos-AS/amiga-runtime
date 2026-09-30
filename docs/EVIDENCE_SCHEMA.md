@@ -31,3 +31,27 @@ backend-native PASS as a different runtime or architecture.
 `amiga-runtime compare` preserves one evidence directory per emulator and
 embeds each available `result.json` in the aggregate `compare.json`.
 Mixed PASS/FAIL results are classified as `EMULATOR_DIVERGENCE`.
+
+
+## Program guest output
+
+Program-execution evidence MAY expose captured guest streams through a
+`guest_output` object in `result.json`.
+
+Example:
+
+```json
+{
+  "guest_output": {
+    "stdout": "guest-console.txt",
+    "encoding": "utf-8"
+  }
+}
+```
+
+Paths are relative to the evidence directory and MUST NOT escape it. A consumer
+MUST treat the referenced evidence file as the captured guest stream; emulator
+host logs are not substitutes for guest program output.
+
+The FS-UAE `run-hunk` path publishes `guest-console.txt` this way. This is a
+stable consumer interface for course/project qualification.
