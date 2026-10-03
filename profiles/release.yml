@@ -1,0 +1,8 @@
+version: 1.0.0
+contract: amiga-runtime-profile/v1
+reference_emulator: fs-uae
+runtime: aros-m68k
+baseline_profile: a1200-020-aros
+result_schema: amiga-runtime-result-v1
+moving_major_tag: v1
+release_tag: v1.0.0
