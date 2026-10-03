@@ -58,8 +58,11 @@ jobs:
         env:
           RUNTIME_IMAGE: ${{ inputs.runtime_image }}
         run: |
-          mkdir -p runtime-evidence
-          docker run --rm "$RUNTIME_IMAGE" prepare-aros | tee runtime-evidence/aros-prepare.log
+          mkdir -p runtime-evidence runtime-aros
+          docker run --rm \
+            -v "$PWD/runtime-aros:/work/aros" \
+            -e AROS_RUNTIME_DIR=/work/aros \
+            "$RUNTIME_IMAGE" prepare-aros | tee runtime-evidence/aros-prepare.log
           grep -Fq 'AROS m68k runtime prepared: PASS' runtime-evidence/aros-prepare.log
 
       - name: Qualify project payload
@@ -75,7 +78,9 @@ jobs:
           fi
           docker_args=(--rm
             -v "$PWD/runtime-input:/work/input:ro"
-            -v "$PWD/runtime-evidence:/work/evidence")
+            -v "$PWD/runtime-evidence:/work/evidence"
+            -v "$PWD/runtime-aros:/work/aros:ro"
+            -e AROS_RUNTIME_DIR=/work/aros)
           if [ -n "${AMIGA_RUNTIME_KICKSTART_ROM:-}" ]; then
             test -f "$AMIGA_RUNTIME_KICKSTART_ROM"
             docker_args+=(-v "$AMIGA_RUNTIME_KICKSTART_ROM:/work/assets/kickstart.rom:ro" -e AMIGA_RUNTIME_KICKSTART_ROM=/work/assets/kickstart.rom)
