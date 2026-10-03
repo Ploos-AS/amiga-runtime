@@ -54,6 +54,16 @@ jobs:
       - name: Pull runtime image
         run: docker pull "${{ inputs.runtime_image }}"
 
+      - name: Prepare redistributable AROS/m68k runtime
+        run: |
+          mkdir -p runtime-evidence
+          docker run --rm \
+            -v "$PWD/runtime-evidence:/work/evidence" \
+            "$RUNTIME_IMAGE" \
+            sh -ec 'prepare-aros > /work/evidence/aros-prepare.log 2>&1'
+          test -s runtime-evidence/aros-prepare.log
+          grep -Fq 'AROS m68k runtime prepared: PASS' runtime-evidence/aros-prepare.log
+
       - name: Qualify project payload
         shell: bash
         env:
