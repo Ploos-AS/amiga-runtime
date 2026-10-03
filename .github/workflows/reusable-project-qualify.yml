@@ -79,7 +79,7 @@ jobs:
           docker_args=(--rm
             -v "$PWD/runtime-input:/work/input:ro"
             -v "$PWD/runtime-evidence:/work/evidence"
-            -v "$PWD/runtime-aros:/work/aros:ro"
+            -v "$PWD/runtime-aros:/work/aros"
             -e AROS_RUNTIME_DIR=/work/aros)
           if [ -n "${AMIGA_RUNTIME_KICKSTART_ROM:-}" ]; then
             test -f "$AMIGA_RUNTIME_KICKSTART_ROM"
