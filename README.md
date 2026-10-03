@@ -60,3 +60,11 @@ Q4 project qualification is deliberately separated from the redistributable CI p
 A project supplies an `amiga-runtime.json` contract and staged payload. The workflow accepts either a local `payload_path` or a Ploos-AS GitHub Actions `payload_artifact_url`. Cross-repository artifact downloads may use the optional `CLASSIC_PAYLOAD_TOKEN` secret; if configured, scope it to Actions/content read access only.
 
 The workflow publishes only sanitized evidence and rejects common proprietary Amiga media/archive types and private host paths before upload. A successful build or emulator launch is not Q4 proof: the project contract's required guest markers must be present in the verified result.
+
+## Stable v1 baseline
+
+The stable v1 contract is `amiga-runtime-profile/v1` with FS-UAE as the reference emulator, redistributable AROS/m68k as the runtime, and `a1200-020-aros` as the baseline profile. The result schema is `amiga-runtime-result-v1`.
+
+The baseline is qualified end-to-end with a real m68k Hunk consumer built by `Ploos-AS/amiga-dev`, executed inside the emulated AROS/m68k guest, and accepted only when guest execution completes with exit code 0 and the required runtime marker is present.
+
+Amiberry, FellowNG, and Copperline are additional backend qualifications. The broader machine matrix and complete cross-backend ARexx matrix remain future qualification work and are not part of the stable v1 core guarantee.
