@@ -57,6 +57,16 @@ jobs:
           path: aros-regina-out
       - name: Repository checks
         run: make check
+      - name: Validate stable v1 runtime contract
+        run: |
+          grep -Fxq 'version: 1.0.0' profiles/release.yml
+          grep -Fxq 'contract: amiga-runtime-profile/v1' profiles/release.yml
+          grep -Fxq 'reference_emulator: fs-uae' profiles/release.yml
+          grep -Fxq 'runtime: aros-m68k' profiles/release.yml
+          grep -Fxq 'baseline_profile: a1200-020-aros' profiles/release.yml
+          grep -Fxq 'result_schema: amiga-runtime-result-v1' profiles/release.yml
+          grep -Fxq 'moving_major_tag: v1' profiles/release.yml
+          grep -Fxq 'release_tag: v1.0.0' profiles/release.yml
       - name: Build runtime image
         run: docker build -t amiga-runtime:m2 .
       - name: Container self-test
