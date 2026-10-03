@@ -55,6 +55,8 @@ jobs:
         run: docker pull "${{ inputs.runtime_image }}"
 
       - name: Prepare redistributable AROS/m68k runtime
+        env:
+          RUNTIME_IMAGE: ${{ inputs.runtime_image }}
         run: |
           mkdir -p runtime-evidence
           docker run --rm \
