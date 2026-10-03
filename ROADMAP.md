@@ -89,3 +89,15 @@
 - [ ] Preserve the m68k ARexx qualification contract when the free runtime supports it
 - [ ] Cross-project compatibility matrix
 - [ ] Regression qualification suite
+
+## M6 — Stable v1 baseline
+
+- [x] Define `amiga-runtime-profile/v1`
+- [x] Pin FS-UAE as the reference emulator
+- [x] Pin AROS/m68k A1200/68020 as the baseline profile
+- [x] Gate `amiga-runtime-result-v1`
+- [x] Qualify the stable runtime identity in GitHub Actions
+- [x] Qualify an `amiga-dev` m68k consumer artifact end-to-end in the guest
+- [ ] Publish immutable `v1.0.0` and moving `v1` tags
+
+**Stable baseline:** FS-UAE + AROS/m68k + `a1200-020-aros`. Amiberry, FellowNG, Copperline, broader machine profiles, and the full cross-backend ARexx matrix remain additional qualification work and do not block the v1 core contract.
